@@ -14,4 +14,5 @@ RUN pnpm --filter api build
 
 ENV NODE_ENV=production
 EXPOSE 3001
-CMD ["node", "apps/api/dist/src/main.js"]
+WORKDIR /app/apps/api
+CMD ["node", "dist/src/main.js"]
