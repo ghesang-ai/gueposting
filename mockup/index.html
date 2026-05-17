@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEKAT — Gadget Social Network</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --accent: #0A84FF;
+    --accent-light: #E8F3FF;
+    --green: #30D158;
+    --red: #FF453A;
+    --orange: #FF9F0A;
+    --purple: #BF5AF2;
+    --bg: #F2F2F7;
+    --card: #FFFFFF;
+    --text: #1C1C1E;
+    --text2: #6C6C70;
+    --text3: #AEAEB2;
+    --border: #E5E5EA;
+    --sidebar-w: 240px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    padding: 24px 16px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; margin-bottom: 28px;
+  }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, #0A84FF, #0040FF);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 800; font-size: 16px; letter-spacing: -1px;
+  }
+  .logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+
+  .nav-group { margin-bottom: 8px; }
+  .nav-label {
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    padding: 0 12px; margin-bottom: 4px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    cursor: pointer; color: var(--text2);
+    font-size: 14px; font-weight: 500;
+    transition: all 0.15s; position: relative;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+  .nav-icon { width: 20px; text-align: center; font-size: 16px; }
+  .nav-badge {
+    margin-left: auto; background: var(--red); color: white;
+    font-size: 11px; font-weight: 700; padding: 1px 6px;
+    border-radius: 10px; min-width: 18px; text-align: center;
+  }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px; border-radius: 12px;
+    background: var(--bg); cursor: pointer;
+  }
+  .avatar-sm {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF9F0A, #FF453A);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 14px;
+  }
+  .avatar-info { flex: 1; }
+  .avatar-name { font-size: 13px; font-weight: 600; }
+  .avatar-handle { font-size: 11px; color: var(--text2); }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex: 1; overflow-y: auto; }
+  .screen.active { display: flex; }
+
+  /* ══════════════════════════════════
+     SCREEN: FEED
+  ══════════════════════════════════ */
+  .feed-layout { display: flex; flex: 1; gap: 0; }
+  .feed-center {
+    flex: 1; max-width: 620px; padding: 28px 24px;
+    border-right: 1px solid var(--border);
+  }
+  .feed-right { width: 300px; padding: 28px 20px; flex-shrink: 0; }
+
+  .page-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 20px; }
+
+  .tabs {
+    display: flex; gap: 0; margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 10px 20px; font-size: 14px; font-weight: 500;
+    color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all 0.15s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  /* Story Row */
+  .stories {
+    display: flex; gap: 12px; margin-bottom: 24px;
+    overflow-x: auto; padding-bottom: 4px;
+  }
+  .story {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; cursor: pointer; flex-shrink: 0;
+  }
+  .story-ring {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF9F0A, #FF453A, #BF5AF2);
+    padding: 2px; display: flex; align-items: center; justify-content: center;
+  }
+  .story-ring.add { background: var(--bg); border: 2px dashed var(--border); }
+  .story-avatar {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: var(--bg); border: 2px solid white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .story-name { font-size: 11px; color: var(--text2); }
+
+  /* Post Card */
+  .post-card {
+    background: var(--card); border-radius: 16px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s;
+  }
+  .post-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .post-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 16px 0;
+  }
+  .post-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+  .post-meta { flex: 1; }
+  .post-author { font-size: 14px; font-weight: 600; }
+  .post-sub { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+  .real-badge {
+    background: #E8F8EE; color: var(--green);
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 6px; letter-spacing: 0.3px;
+  }
+  .post-body { padding: 12px 16px; }
+  .post-title { font-size: 15px; font-weight: 600; line-height: 1.4; margin-bottom: 6px; }
+  .post-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .post-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .tag {
+    font-size: 12px; color: var(--accent); background: var(--accent-light);
+    padding: 3px 10px; border-radius: 20px; font-weight: 500;
+  }
+  .post-image {
+    height: 200px; background: linear-gradient(135deg, #1C1C1E, #3A3A3C);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 40px; position: relative; overflow: hidden;
+  }
+  .post-image-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.4));
+  }
+  .post-image-count {
+    position: absolute; bottom: 12px; right: 12px;
+    background: rgba(0,0,0,0.6); color: white;
+    font-size: 12px; font-weight: 600; padding: 4px 10px;
+    border-radius: 20px; backdrop-filter: blur(4px);
+  }
+  .post-actions {
+    display: flex; align-items: center; gap: 0;
+    padding: 4px 8px 8px; border-top: 1px solid var(--border);
+    margin-top: 12px;
+  }
+  .action-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; color: var(--text2); font-weight: 500;
+    transition: all 0.15s;
+  }
+  .action-btn:hover { background: var(--bg); color: var(--text); }
+  .action-btn.liked { color: var(--red); }
+  .action-btn span { font-size: 15px; }
+
+  /* Compose Box */
+  .compose-box {
+    background: var(--card); border-radius: 16px;
+    border: 1px solid var(--border); padding: 16px;
+    margin-bottom: 20px; display: flex; gap: 12px;
+    align-items: flex-start;
+  }
+  .compose-input {
+    flex: 1; background: var(--bg); border-radius: 10px;
+    padding: 10px 14px; font-size: 14px; color: var(--text2);
+    border: none; outline: none; cursor: pointer;
+    font-family: inherit;
+  }
+  .compose-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .compose-btn {
+    padding: 7px 16px; border-radius: 20px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .compose-btn.primary { background: var(--accent); color: white; }
+  .compose-btn.secondary { background: var(--bg); color: var(--text2); }
+
+  /* Right Panel */
+  .widget-card {
+    background: var(--card); border-radius: 16px;
+    border: 1px solid var(--border); padding: 16px;
+    margin-bottom: 16px;
+  }
+  .widget-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .trending-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .trending-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .trending-rank {
+    width: 24px; font-size: 15px; font-weight: 800; color: var(--text3);
+    text-align: center;
+  }
+  .trending-rank.top { color: var(--accent); }
+  .trending-info { flex: 1; }
+  .trending-name { font-size: 13px; font-weight: 600; }
+  .trending-meta { font-size: 11px; color: var(--text2); }
+  .trending-img {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--bg); display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+
+  .creator-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .creator-item:last-child { border-bottom: none; }
+  .creator-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: white;
+  }
+  .creator-info { flex: 1; }
+  .creator-name { font-size: 13px; font-weight: 600; }
+  .creator-followers { font-size: 11px; color: var(--text2); }
+  .follow-btn {
+    padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--accent);
+    color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer;
+    background: transparent;
+  }
+  .follow-btn.following { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* ══════════════════════════════════
+     SCREEN: GADGET DETAIL
+  ══════════════════════════════════ */
+  .gadget-layout { display: flex; flex: 1; }
+  .gadget-main { flex: 1; padding: 28px 32px; max-width: 700px; overflow-y: auto; }
+  .gadget-sidebar { width: 280px; padding: 28px 20px; border-left: 1px solid var(--border); overflow-y: auto; }
+
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--accent); font-size: 14px; font-weight: 500;
+    cursor: pointer; margin-bottom: 20px;
+  }
+  .gadget-hero {
+    background: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
+    border-radius: 20px; height: 260px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 80px; margin-bottom: 24px; position: relative; overflow: hidden;
+  }
+  .gadget-hero-badge {
+    position: absolute; top: 16px; right: 16px;
+    background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+    color: white; padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+  }
+  .gadget-name { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .gadget-brand { font-size: 15px; color: var(--text2); margin-bottom: 16px; }
+
+  .stats-row {
+    display: flex; gap: 12px; margin-bottom: 24px;
+  }
+  .stat-card {
+    flex: 1; background: var(--card); border-radius: 14px;
+    border: 1px solid var(--border); padding: 14px;
+    text-align: center;
+  }
+  .stat-value { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .stat-label { font-size: 11px; color: var(--text2); font-weight: 500; margin-top: 2px; }
+
+  .score-bar {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .score-label { font-size: 13px; color: var(--text2); width: 80px; }
+  .score-track {
+    flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden;
+  }
+  .score-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+  .score-num { font-size: 13px; font-weight: 600; width: 24px; text-align: right; }
+
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .spec-item {
+    background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+    padding: 12px;
+  }
+  .spec-key { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+  .spec-val { font-size: 13px; font-weight: 600; }
+
+  .section-title { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+
+  /* ══════════════════════════════════
+     SCREEN: AI COMPARE
+  ══════════════════════════════════ */
+  .ai-layout { flex: 1; padding: 28px 32px; overflow-y: auto; max-width: 800px; }
+
+  .ai-header { margin-bottom: 28px; }
+  .ai-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .ai-sub { font-size: 14px; color: var(--text2); }
+
+  .compare-selector {
+    display: flex; gap: 16px; align-items: center; margin-bottom: 28px;
+  }
+  .gadget-select-card {
+    flex: 1; background: var(--card); border-radius: 16px;
+    border: 2px solid var(--border); padding: 20px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; cursor: pointer; transition: all 0.2s;
+    min-height: 160px; justify-content: center;
+  }
+  .gadget-select-card.selected { border-color: var(--accent); background: var(--accent-light); }
+  .gadget-select-card.empty {
+    border-style: dashed; color: var(--text2);
+  }
+  .gadget-select-icon { font-size: 48px; }
+  .gadget-select-name { font-size: 14px; font-weight: 700; text-align: center; }
+  .gadget-select-brand { font-size: 12px; color: var(--text2); }
+  .vs-badge {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--text); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; flex-shrink: 0;
+  }
+
+  .ai-result {
+    background: linear-gradient(135deg, #0040FF08, #BF5AF208);
+    border: 1px solid var(--accent); border-radius: 20px; padding: 24px;
+    margin-bottom: 24px;
+  }
+  .ai-result-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  }
+  .ai-badge {
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    color: white; font-size: 11px; font-weight: 700; padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .ai-result-title { font-size: 17px; font-weight: 700; }
+
+  .ai-insight-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .ai-insight {
+    flex: 1; background: var(--card); border-radius: 14px;
+    border: 1px solid var(--border); padding: 14px;
+  }
+  .ai-insight-cat { font-size: 11px; color: var(--text2); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .ai-insight-winner { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+  .ai-insight-note { font-size: 12px; color: var(--text2); line-height: 1.4; }
+
+  .recommendation-card {
+    background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+    padding: 20px; margin-bottom: 16px;
+  }
+  .rec-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .rec-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent-light); display: flex; align-items: center;
+    justify-content: center; font-size: 18px;
+  }
+  .rec-title { font-size: 15px; font-weight: 700; }
+  .rec-sub { font-size: 12px; color: var(--text2); }
+
+  .verdict-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .verdict-item:last-child { border-bottom: none; }
+  .verdict-check { color: var(--green); font-size: 15px; }
+
+  /* ══════════════════════════════════
+     SCREEN: AUTH
+  ══════════════════════════════════ */
+  .auth-layout {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 40px; background: var(--bg);
+  }
+  .auth-card {
+    background: var(--card); border-radius: 24px;
+    border: 1px solid var(--border); padding: 40px;
+    width: 100%; max-width: 400px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+  }
+  .auth-logo { text-align: center; margin-bottom: 32px; }
+  .auth-logo-mark {
+    width: 60px; height: 60px; border-radius: 18px;
+    background: linear-gradient(135deg, #0A84FF, #0040FF);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 900; font-size: 26px;
+    margin: 0 auto 12px; letter-spacing: -1px;
+    box-shadow: 0 8px 24px rgba(10,132,255,0.3);
+  }
+  .auth-brand { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .auth-tagline { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  .auth-tabs { display: flex; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+  .auth-tab {
+    flex: 1; text-align: center; padding: 8px;
+    border-radius: 8px; font-size: 14px; font-weight: 500;
+    cursor: pointer; color: var(--text2); transition: all 0.2s;
+  }
+  .auth-tab.active { background: var(--card); color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; }
+  .form-input {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1.5px solid var(--border); font-size: 14px;
+    background: var(--bg); outline: none; font-family: inherit;
+    transition: border-color 0.15s; color: var(--text);
+  }
+  .form-input:focus { border-color: var(--accent); background: white; }
+  .form-input::placeholder { color: var(--text3); }
+
+  .invite-box {
+    background: linear-gradient(135deg, #FF9F0A12, #FF9F0A08);
+    border: 1.5px solid #FF9F0A; border-radius: 12px; padding: 14px;
+    margin-bottom: 16px;
+  }
+  .invite-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: #FF9F0A; margin-bottom: 8px;
+  }
+  .invite-input {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1.5px solid #FF9F0A40; background: white;
+    font-size: 14px; font-family: inherit; outline: none;
+    letter-spacing: 2px; font-weight: 700;
+  }
+
+  .btn-primary {
+    width: 100%; padding: 14px; border-radius: 14px;
+    background: linear-gradient(135deg, #0A84FF, #0040FF);
+    color: white; font-size: 15px; font-weight: 700;
+    border: none; cursor: pointer; font-family: inherit;
+    box-shadow: 0 4px 16px rgba(10,132,255,0.3);
+    transition: opacity 0.2s; margin-bottom: 12px;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--text3); font-size: 12px; margin: 16px 0;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .btn-social {
+    width: 100%; padding: 12px; border-radius: 14px;
+    border: 1.5px solid var(--border); background: var(--card);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: inherit; display: flex; align-items: center;
+    justify-content: center; gap: 10px; color: var(--text);
+    margin-bottom: 10px; transition: background 0.15s;
+  }
+  .btn-social:hover { background: var(--bg); }
+
+  /* ══════════════════════════════════
+     SCREEN: PROFILE
+  ══════════════════════════════════ */
+  .profile-layout { flex: 1; overflow-y: auto; }
+  .profile-cover {
+    height: 200px; background: linear-gradient(135deg, #0040FF, #BF5AF2, #FF453A);
+    position: relative;
+  }
+  .profile-content { padding: 0 32px 32px; }
+  .profile-avatar-wrap { margin-top: -40px; margin-bottom: 16px; position: relative; display: inline-block; }
+  .profile-avatar {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF9F0A, #FF453A);
+    border: 4px solid var(--card);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; font-weight: 800; color: white;
+  }
+  .verified-badge {
+    position: absolute; bottom: 2px; right: 2px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); border: 2px solid var(--card);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: white;
+  }
+  .profile-name { font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+  .profile-handle { font-size: 14px; color: var(--text2); margin-bottom: 10px; }
+  .profile-bio { font-size: 14px; line-height: 1.5; color: var(--text2); margin-bottom: 16px; max-width: 500px; }
+
+  .profile-stats {
+    display: flex; gap: 24px; margin-bottom: 20px;
+  }
+  .profile-stat { text-align: center; }
+  .profile-stat-val { font-size: 20px; font-weight: 800; }
+  .profile-stat-lab { font-size: 12px; color: var(--text2); }
+
+  .trust-score {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #E8F8EE; border-radius: 20px; padding: 6px 14px;
+    margin-bottom: 20px;
+  }
+  .trust-score-val { font-size: 15px; font-weight: 800; color: var(--green); }
+  .trust-score-label { font-size: 12px; color: var(--green); font-weight: 600; }
+
+  .profile-actions { display: flex; gap: 10px; margin-bottom: 28px; }
+  .btn-outline {
+    padding: 9px 20px; border-radius: 20px;
+    border: 1.5px solid var(--border); background: var(--card);
+    font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+
+  .post-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px; }
+  .post-grid-item {
+    aspect-ratio: 1; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; cursor: pointer; overflow: hidden; position: relative;
+  }
+  .post-grid-item:hover::after {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(0,0,0,0.2);
+  }
+
+  /* ══════════════════════════════════
+     TOPBAR
+  ══════════════════════════════════ */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(242,242,247,0.85); backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 52px;
+    display: flex; align-items: center; gap: 12px;
+    width: 100%;
+  }
+  .search-box {
+    flex: 1; max-width: 360px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 7px 12px; display: flex; align-items: center; gap: 8px;
+    cursor: text;
+  }
+  .search-input {
+    border: none; outline: none; background: transparent;
+    font-size: 13px; font-family: inherit; flex: 1; color: var(--text);
+  }
+  .search-icon { color: var(--text3); font-size: 14px; }
+  .topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; position: relative;
+  }
+  .icon-btn-badge {
+    position: absolute; top: -4px; right: -4px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--red); color: white;
+    font-size: 9px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--bg);
+  }
+
+  /* Floating Action Button */
+  .fab {
+    position: fixed; bottom: 32px; right: 32px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, #0A84FF, #0040FF);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: white; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(10,132,255,0.4);
+    transition: transform 0.2s;
+    z-index: 200;
+  }
+  .fab:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SIDEBAR NAVIGATION
+══════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">D</div>
+    <div class="logo-text">DEKAT</div>
+  </div>
+
+  <div class="nav-group">
+    <nav>
+      <div class="nav-item active" onclick="showScreen('feed')">
+        <span class="nav-icon">🏠</span> Beranda
+      </div>
+      <div class="nav-item" onclick="showScreen('explore')">
+        <span class="nav-icon">🔍</span> Jelajahi
+      </div>
+      <div class="nav-item" onclick="showScreen('ai')">
+        <span class="nav-icon">✦</span> AI Compare
+      </div>
+      <div class="nav-item" onclick="showScreen('notif')">
+        <span class="nav-icon">🔔</span> Notifikasi
+        <span class="nav-badge">4</span>
+      </div>
+      <div class="nav-item" onclick="showScreen('feed')">
+        <span class="nav-icon">💬</span> Pesan
+      </div>
+      <div class="nav-item" onclick="showScreen('feed')">
+        <span class="nav-icon">🔖</span> Bookmark
+      </div>
+    </nav>
+  </div>
+
+  <div class="nav-group" style="margin-top:12px;">
+    <div class="nav-label">Komunitas</div>
+    <nav>
+      <div class="nav-item" onclick="showScreen('feed')">
+        <span class="nav-icon">📱</span> iPhone 15 Pro
+      </div>
+      <div class="nav-item" onclick="showScreen('feed')">
+        <span class="nav-icon">💻</span> Laptop Gaming
+      </div>
+      <div class="nav-item" onclick="showScreen('feed')">
+        <span class="nav-icon">🎧</span> Audio & TWS
+      </div>
+    </nav>
+  </div>
+
+  <div class="sidebar-bottom" onclick="showScreen('profile')">
+    <div class="avatar-sm">G</div>
+    <div class="avatar-info">
+      <div class="avatar-name">Ghesang</div>
+      <div class="avatar-handle">@ghesang</div>
+    </div>
+    <span style="color:var(--text3);font-size:14px;">⋯</span>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════════════
+     MAIN CONTENT
+══════════════════════════════════════ -->
+<main class="main">
+
+  <!-- ── SCREEN: FEED ── -->
+  <div class="screen active" id="screen-feed">
+    <div class="feed-layout">
+      <div class="feed-center">
+        <div class="topbar" style="margin: 0 -24px; width: calc(100% + 48px); padding: 0 24px;">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" placeholder="Cari gadget, review, pengguna...">
+          </div>
+          <div class="topbar-actions">
+            <div class="icon-btn">🔔<span class="icon-btn-badge">4</span></div>
+            <div class="icon-btn" onclick="showScreen('profile')">👤</div>
+          </div>
+        </div>
+
+        <div style="padding-top: 24px;">
+          <!-- Stories -->
+          <div class="stories">
+            <div class="story">
+              <div class="story-ring add">
+                <div class="story-avatar" style="font-size:22px;">+</div>
+              </div>
+              <div class="story-name">Kamu</div>
+            </div>
+            <div class="story">
+              <div class="story-ring">
+                <div class="story-avatar">📱</div>
+              </div>
+              <div class="story-name">Andika</div>
+            </div>
+            <div class="story">
+              <div class="story-ring">
+                <div class="story-avatar">💻</div>
+              </div>
+              <div class="story-name">Dita</div>
+            </div>
+            <div class="story">
+              <div class="story-ring">
+                <div class="story-avatar">🎧</div>
+              </div>
+              <div class="story-name">Rama</div>
+            </div>
+            <div class="story">
+              <div class="story-ring">
+                <div class="story-avatar">🖥️</div>
+              </div>
+              <div class="story-name">Fajar</div>
+            </div>
+          </div>
+
+          <!-- Compose -->
+          <div class="compose-box">
+            <div class="avatar-sm" style="width:40px;height:40px;font-size:16px;">G</div>
+            <div style="flex:1;">
+              <div class="compose-input">Bagikan pengalaman gadget kamu...</div>
+              <div class="compose-actions" style="margin-top: 10px;">
+                <button class="compose-btn secondary">📷 Foto</button>
+                <button class="compose-btn secondary">🎬 Video</button>
+                <button class="compose-btn secondary">⭐ Review</button>
+                <button class="compose-btn primary" style="margin-left:auto;">Post</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="tabs">
+            <div class="tab active">Untuk Kamu</div>
+            <div class="tab">Following</div>
+            <div class="tab">Trending</div>
+          </div>
+
+          <!-- Post 1 -->
+          <div class="post-card">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#0A84FF,#0040FF)">A</div>
+              <div class="post-meta">
+                <div class="post-author">Andika Pratama</div>
+                <div class="post-sub">
+                  📱 iPhone 15 Pro · 1 jam lalu
+                  <span class="real-badge">✓ Real User</span>
+                </div>
+              </div>
+              <span style="color:var(--text3);cursor:pointer;font-size:20px;">⋯</span>
+            </div>
+            <div class="post-body">
+              <div class="post-title">8 Bulan pakai iPhone 15 Pro, apakah masih worth it di 2024?</div>
+              <div class="post-text">Setelah 8 bulan pemakaian sehari-hari, ini review jujur dari gue. Baterai, kamera, performa, sampai hal-hal kecil yang sering ditanyain...</div>
+              <div class="post-tags">
+                <span class="tag">#iPhone15Pro</span>
+                <span class="tag">#ReviewJujur</span>
+                <span class="tag">#8BulanPemakaian</span>
+              </div>
+            </div>
+            <div class="post-image" style="margin: 0 16px; border-radius: 12px; overflow:hidden; margin-bottom: 12px; height:180px;">
+              <span style="font-size:80px;z-index:1;">📱</span>
+              <div class="post-image-overlay"></div>
+              <span class="post-image-count">+6 foto</span>
+            </div>
+            <div class="post-actions">
+              <div class="action-btn liked"><span>♥</span> 342</div>
+              <div class="action-btn"><span>💬</span> 68</div>
+              <div class="action-btn"><span>↗</span> 27</div>
+              <div class="action-btn" style="margin-left:auto;"><span>🔖</span></div>
+            </div>
+          </div>
+
+          <!-- Post 2 -->
+          <div class="post-card">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#BF5AF2,#FF453A)">R</div>
+              <div class="post-meta">
+                <div class="post-author">Rama Aditya</div>
+                <div class="post-sub">📷 Samsung S24 Ultra · 4 jam lalu</div>
+              </div>
+              <span style="color:var(--text3);cursor:pointer;font-size:20px;">⋯</span>
+            </div>
+            <div class="post-body">
+              <div class="post-title">Kamera S24 Ultra di malam hari sebagus itu?</div>
+              <div class="post-text">Baterahnya emak banget sekarang, setiap pemakaian normal masih ada sisa 20%...</div>
+              <div class="post-tags">
+                <span class="tag">#SamsungS24Ultra</span>
+                <span class="tag">#NightMode</span>
+              </div>
+            </div>
+            <div class="post-actions">
+              <div class="action-btn"><span>♡</span> 124</div>
+              <div class="action-btn"><span>💬</span> 31</div>
+              <div class="action-btn"><span>↗</span> 12</div>
+              <div class="action-btn" style="margin-left:auto;"><span>🔖</span></div>
+            </div>
+          </div>
+
+          <!-- Post 3 -->
+          <div class="post-card" onclick="showScreen('gadget')">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#30D158,#0A84FF)">D</div>
+              <div class="post-meta">
+                <div class="post-author">Dita Aulia</div>
+                <div class="post-sub">
+                  💻 MacBook Pro M3 · 2 jam lalu
+                  <span class="real-badge">✓ Real User</span>
+                </div>
+              </div>
+              <span style="color:var(--text3);cursor:pointer;font-size:20px;">⋯</span>
+            </div>
+            <div class="post-body">
+              <div class="post-title">MacBook Pro M3 untuk desainer — 6 bulan review</div>
+              <div class="post-text">Performa untuk Figma, Premiere, dan multitasking luar biasa. Battery life yang buat saya kaget...</div>
+            </div>
+            <div class="post-actions">
+              <div class="action-btn"><span>♡</span> 89</div>
+              <div class="action-btn"><span>💬</span> 23</div>
+              <div class="action-btn"><span>↗</span> 18</div>
+              <div class="action-btn" style="margin-left:auto;"><span>🔖</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="feed-right">
+        <div class="widget-card">
+          <div class="widget-title">🔥 Trending Gadget</div>
+          <div class="trending-item">
+            <div class="trending-rank top">1</div>
+            <div class="trending-img">📱</div>
+            <div class="trending-info">
+              <div class="trending-name">iPhone 15 Pro</div>
+              <div class="trending-meta">Apple · 4.6K review</div>
+            </div>
+          </div>
+          <div class="trending-item">
+            <div class="trending-rank top">2</div>
+            <div class="trending-img">📷</div>
+            <div class="trending-info">
+              <div class="trending-name">Samsung S24 Ultra</div>
+              <div class="trending-meta">Samsung · 3.1K review</div>
+            </div>
+          </div>
+          <div class="trending-item">
+            <div class="trending-rank">3</div>
+            <div class="trending-img">💻</div>
+            <div class="trending-info">
+              <div class="trending-name">POCO F6</div>
+              <div class="trending-meta">Xiaomi · 2.4K review</div>
+            </div>
+          </div>
+          <div class="trending-item">
+            <div class="trending-rank">4</div>
+            <div class="trending-img">📱</div>
+            <div class="trending-info">
+              <div class="trending-name">Nothing Phone (2a)</div>
+              <div class="trending-meta">Nothing · 1.8K review</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-title">👥 Top Creator</div>
+          <div class="creator-item">
+            <div class="creator-avatar" style="background:linear-gradient(135deg,#0A84FF,#0040FF)">G</div>
+            <div class="creator-info">
+              <div class="creator-name">GadgetIn</div>
+              <div class="creator-followers">82.1K followers</div>
+            </div>
+            <button class="follow-btn following">Following</button>
+          </div>
+          <div class="creator-item">
+            <div class="creator-avatar" style="background:linear-gradient(135deg,#BF5AF2,#FF453A)">D</div>
+            <div class="creator-info">
+              <div class="creator-name">DroidTech ID</div>
+              <div class="creator-followers">76.4K followers</div>
+            </div>
+            <button class="follow-btn">Follow</button>
+          </div>
+          <div class="creator-item">
+            <div class="creator-avatar" style="background:linear-gradient(135deg,#30D158,#0A84FF)">T</div>
+            <div class="creator-info">
+              <div class="creator-name">TechWithMilo</div>
+              <div class="creator-followers">56.3K followers</div>
+            </div>
+            <button class="follow-btn">Follow</button>
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-title">✦ AI Compare</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px;">
+            Bandingkan gadget pilihan kamu dengan analisis mendalam dari AI
+          </div>
+          <button class="compose-btn primary" style="width:100%;justify-content:center;padding:10px;" onclick="showScreen('ai')">Mulai Perbandingan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: GADGET DETAIL ── -->
+  <div class="screen" id="screen-gadget">
+    <div class="gadget-layout">
+      <div class="gadget-main">
+        <div class="back-btn" onclick="showScreen('feed')">← Kembali</div>
+
+        <div class="gadget-hero">
+          <span style="z-index:1;">📱</span>
+          <span class="gadget-hero-badge">📱 Smartphone</span>
+        </div>
+
+        <div class="gadget-name">iPhone 15 Pro</div>
+        <div class="gadget-brand">Apple · Dirilis September 2023</div>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" style="color:var(--accent)">4.6</div>
+            <div class="stat-label">⭐ Rata-rata</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">1.2K</div>
+            <div class="stat-label">Review</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">8.7K</div>
+            <div class="stat-label">Pengguna</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">3.4K</div>
+            <div class="stat-label">Diskusi</div>
+          </div>
+        </div>
+
+        <div style="background:var(--card);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:24px;">
+          <div class="section-title">Skor Detail</div>
+          <div class="score-bar">
+            <div class="score-label">📷 Kamera</div>
+            <div class="score-track"><div class="score-fill" style="width:92%"></div></div>
+            <div class="score-num">4.6</div>
+          </div>
+          <div class="score-bar">
+            <div class="score-label">🔋 Baterai</div>
+            <div class="score-track"><div class="score-fill" style="width:84%;background:var(--green)"></div></div>
+            <div class="score-num">4.2</div>
+          </div>
+          <div class="score-bar">
+            <div class="score-label">⚡ Performa</div>
+            <div class="score-track"><div class="score-fill" style="width:94%;background:var(--purple)"></div></div>
+            <div class="score-num">4.7</div>
+          </div>
+          <div class="score-bar">
+            <div class="score-label">🎨 Desain</div>
+            <div class="score-track"><div class="score-fill" style="width:92%;background:var(--orange)"></div></div>
+            <div class="score-num">4.6</div>
+          </div>
+        </div>
+
+        <div class="section-title">Spesifikasi Utama</div>
+        <div class="spec-grid">
+          <div class="spec-item"><div class="spec-key">Chip</div><div class="spec-val">Apple A17 Pro</div></div>
+          <div class="spec-item"><div class="spec-key">RAM</div><div class="spec-val">8 GB</div></div>
+          <div class="spec-item"><div class="spec-key">Layar</div><div class="spec-val">6.1" OLED, 120Hz</div></div>
+          <div class="spec-item"><div class="spec-key">Kamera</div><div class="spec-val">48MP + 12MP + 12MP</div></div>
+          <div class="spec-item"><div class="spec-key">Baterai</div><div class="spec-val">3274 mAh</div></div>
+          <div class="spec-item"><div class="spec-key">Storage</div><div class="spec-val">128GB / 256GB / 512GB</div></div>
+          <div class="spec-item"><div class="spec-key">OS</div><div class="spec-val">iOS 17</div></div>
+          <div class="spec-item"><div class="spec-key">Harga</div><div class="spec-val">Rp 20.9 Juta</div></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:28px;">
+          <button class="compose-btn primary" style="flex:1;justify-content:center;padding:12px;" onclick="showScreen('ai')">✦ Bandingkan dengan AI</button>
+          <button class="compose-btn secondary" style="padding:12px 20px;">✍️ Tulis Review</button>
+        </div>
+
+        <div class="section-title">Review Terbaru</div>
+        <div class="post-card">
+          <div class="post-header">
+            <div class="post-avatar" style="background:linear-gradient(135deg,#0A84FF,#0040FF)">A</div>
+            <div class="post-meta">
+              <div class="post-author">Andika Pratama <span style="color:var(--accent);">⭐ 4.8</span></div>
+              <div class="post-sub">3 jam lalu <span class="real-badge">✓ Real User</span></div>
+            </div>
+          </div>
+          <div class="post-body">
+            <div class="post-text">Kamera titanium build quality-nya premium banget. Dynamic Island sekarang sudah banyak app yang support. Cuma baterai memang agak boros kalau main ProRes video...</div>
+          </div>
+          <div class="post-actions">
+            <div class="action-btn liked"><span>♥</span> 89</div>
+            <div class="action-btn"><span>💬</span> 12</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gadget-sidebar">
+        <div class="widget-card">
+          <div class="widget-title">Highlight Pengalaman</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+            <span style="background:var(--accent-light);color:var(--accent);padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;">📷 Kamera 4.6</span>
+            <span style="background:#F0FFF4;color:var(--green);padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔋 Baterai 4.2</span>
+            <span style="background:#FFF0F0;color:var(--purple);padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;">⚡ Performa 4.7</span>
+            <span style="background:#FFF8EC;color:var(--orange);padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;">🎨 Desain 4.6</span>
+          </div>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-title">💬 Komunitas</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">8.7K member aktif mendiskusikan iPhone 15 Pro</div>
+          <button class="follow-btn" style="width:100%;text-align:center;padding:9px;">Gabung Komunitas</button>
+        </div>
+
+        <div class="widget-card">
+          <div class="widget-title">📊 Sentimen Pengguna</div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+              <span style="color:var(--green);">😊 Positif</span><span style="font-weight:700;">78%</span>
+            </div>
+            <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;">
+              <div style="width:78%;height:100%;background:var(--green);border-radius:3px;"></div>
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+              <span style="color:var(--text2);">😐 Netral</span><span style="font-weight:700;">14%</span>
+            </div>
+            <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;">
+              <div style="width:14%;height:100%;background:var(--text3);border-radius:3px;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+              <span style="color:var(--red);">😞 Negatif</span><span style="font-weight:700;">8%</span>
+            </div>
+            <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;">
+              <div style="width:8%;height:100%;background:var(--red);border-radius:3px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: AI COMPARE ── -->
+  <div class="screen" id="screen-ai">
+    <div class="ai-layout">
+      <div class="ai-header">
+        <div class="ai-title">✦ AI Compare</div>
+        <div class="ai-sub">Bandingkan gadget pilihan kamu dengan analisis mendalam dari GPT-4o</div>
+      </div>
+
+      <!-- Selector -->
+      <div class="compare-selector">
+        <div class="gadget-select-card selected">
+          <div class="gadget-select-icon">📱</div>
+          <div class="gadget-select-name">iPhone 15 Pro</div>
+          <div class="gadget-select-brand">Apple</div>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="gadget-select-card selected" style="border-color:var(--purple);background:#F9F0FF;">
+          <div class="gadget-select-icon">📷</div>
+          <div class="gadget-select-name">Samsung S24 Ultra</div>
+          <div class="gadget-select-brand">Samsung</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+          <div class="gadget-select-card empty" style="width:120px;min-height:80px;padding:12px;">
+            <div style="font-size:24px;">+</div>
+            <div style="font-size:11px;">Tambah</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Context -->
+      <div style="background:var(--card);border-radius:16px;border:1px solid var(--border);padding:20px;margin-bottom:20px;">
+        <div class="section-title" style="font-size:15px;margin-bottom:14px;">Ceritakan kebutuhan kamu</div>
+        <div style="display:flex;gap:12px;margin-bottom:14px;">
+          <div style="flex:1;">
+            <div class="form-label">Budget Maksimal</div>
+            <input class="form-input" placeholder="Rp 20.000.000" value="Rp 20.000.000">
+          </div>
+          <div style="flex:1;">
+            <div class="form-label">Prioritas Utama</div>
+            <input class="form-input" placeholder="Kamera, gaming, baterai..." value="Kamera & video">
+          </div>
+        </div>
+        <button class="btn-primary" style="width:auto;padding:11px 28px;font-size:14px;">✦ Analisis dengan AI</button>
+      </div>
+
+      <!-- AI Result -->
+      <div class="ai-result">
+        <div class="ai-result-header">
+          <span class="ai-badge">✦ AI Analysis</span>
+          <div class="ai-result-title">Berdasarkan 1,234 review & pengalaman pengguna</div>
+        </div>
+
+        <div class="ai-insight-row">
+          <div class="ai-insight">
+            <div class="ai-insight-cat">📷 Kamera</div>
+            <div class="ai-insight-winner">S24 Ultra unggul</div>
+            <div class="ai-insight-note">200MP sensor dan zoom 10x lebih baik untuk detail & low-light</div>
+          </div>
+          <div class="ai-insight">
+            <div class="ai-insight-cat">⚡ Performa</div>
+            <div class="ai-insight-winner">iPhone 15 Pro</div>
+            <div class="ai-insight-note">A17 Pro lebih efisien untuk video editing & app responsiveness</div>
+          </div>
+          <div class="ai-insight">
+            <div class="ai-insight-cat">🔋 Baterai</div>
+            <div class="ai-insight-winner">S24 Ultra unggul</div>
+            <div class="ai-insight-note">Tahan rata-rata 1.5 jam lebih lama dalam penggunaan normal</div>
+          </div>
+          <div class="ai-insight">
+            <div class="ai-insight-cat">🌐 Ekosistem</div>
+            <div class="ai-insight-winner">iPhone 15 Pro</div>
+            <div class="ai-insight-note">Lebih seamless untuk pengguna Apple Watch & Mac</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommendation -->
+      <div class="recommendation-card">
+        <div class="rec-header">
+          <div class="rec-icon">🏆</div>
+          <div>
+            <div class="rec-title">Rekomendasi untuk kamu</div>
+            <div class="rec-sub">Budget Rp 20jt · Prioritas: Kamera & video</div>
+          </div>
+        </div>
+        <div style="background:var(--accent-light);border-radius:12px;padding:14px;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px;">📱 iPhone 15 Pro — Pilihan Terbaik</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.5;">Untuk kebutuhan kamera dan video editing profesional, ekosistem Apple yang seamless, dan budget Rp 20jt — iPhone 15 Pro memberikan pengalaman yang lebih konsisten dan terintegrasi.</div>
+        </div>
+        <div class="verdict-item"><span class="verdict-check">✓</span> ProRes video recording untuk konten kreator</div>
+        <div class="verdict-item"><span class="verdict-check">✓</span> Performa A17 Pro terbaik di kelasnya</div>
+        <div class="verdict-item"><span class="verdict-check">✓</span> Titanium build premium dan ringan</div>
+        <div class="verdict-item" style="border-bottom:none;"><span style="color:var(--orange);">⚠</span> Baterai lebih kecil dari S24 Ultra — bawa powerbank</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: AUTH ── -->
+  <div class="screen" id="screen-auth">
+    <div class="auth-layout">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <div class="auth-logo-mark">D</div>
+          <div class="auth-brand">DEKAT</div>
+          <div class="auth-tagline">Gadget Social Network untuk Indonesia</div>
+        </div>
+
+        <div class="auth-tabs">
+          <div class="auth-tab active">Masuk</div>
+          <div class="auth-tab">Daftar</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Email atau Username</label>
+          <input class="form-input" placeholder="kamu@email.com" value="ghesang@gmail.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" placeholder="••••••••" value="••••••••">
+        </div>
+
+        <div class="invite-box">
+          <div class="invite-label">🎟️ Kode Undangan (untuk daftar)</div>
+          <input class="invite-input" placeholder="DEKAT-XXXX" value="DEKAT-2024">
+        </div>
+
+        <button class="btn-primary" onclick="showScreen('feed')">Masuk ke DEKAT →</button>
+
+        <div class="divider">atau</div>
+
+        <button class="btn-social">🍎 Lanjut dengan Apple</button>
+        <button class="btn-social">🔵 Lanjut dengan Google</button>
+
+        <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:16px;">
+          DEKAT adalah platform invite-only. Butuh kode undangan dari teman.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: PROFILE ── -->
+  <div class="screen" id="screen-profile">
+    <div class="profile-layout">
+      <div class="profile-cover"></div>
+      <div class="profile-content">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar">G</div>
+          <div class="verified-badge">✓</div>
+        </div>
+        <div class="profile-name">Ghesang Pratana</div>
+        <div class="profile-handle">@ghesang · bergabung Mei 2024</div>
+        <div class="profile-bio">Gadget enthusiast 📱 | iPhone & Mac user | Suka review hal-hal yang worth it untuk sehari-hari</div>
+
+        <div class="trust-score">
+          <div class="trust-score-val">8.4</div>
+          <div class="trust-score-label">Trust Score · Terverifikasi</div>
+        </div>
+
+        <div class="profile-stats">
+          <div class="profile-stat">
+            <div class="profile-stat-val">47</div>
+            <div class="profile-stat-lab">Postingan</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-val">1.2K</div>
+            <div class="profile-stat-lab">Followers</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-val">284</div>
+            <div class="profile-stat-lab">Following</div>
+          </div>
+          <div class="profile-stat">
+            <div class="profile-stat-val">12K</div>
+            <div class="profile-stat-lab">Total Like</div>
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button class="btn-primary" style="width:auto;padding:9px 24px;font-size:14px;margin-bottom:0;">Edit Profil</button>
+          <button class="btn-outline">Bagikan Profil</button>
+          <button class="btn-outline">My Gadgets 📱</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <div class="tab active">Postingan</div>
+          <div class="tab">Review</div>
+          <div class="tab">Bookmark</div>
+          <div class="tab">Gadgets</div>
+        </div>
+
+        <div class="post-grid">
+          <div class="post-grid-item" style="background:linear-gradient(135deg,#1C1C1E,#3C3C3E)">📱</div>
+          <div class="post-grid-item" style="background:linear-gradient(135deg,#2C2C2E,#1C1C1E)">💻</div>
+          <div class="post-grid-item" style="background:linear-gradient(135deg,#1C1C1E,#3A3A3C)">🎧</div>
+          <div class="post-grid-item" style="background:linear-gradient(135deg,#2C2C2E,#3C3C3E)">📸</div>
+          <div class="post-grid-item" style="background:linear-gradient(135deg,#1C1C1E,#2C2C2E)">⌚</div>
+          <div class="post-grid-item" style="background:linear-gradient(135deg,#3C3C3E,#1C1C1E)">🖥️</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SCREEN: NOTIF ── -->
+  <div class="screen" id="screen-notif">
+    <div style="padding:28px;max-width:600px;">
+      <div class="page-title">Notifikasi</div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <span style="background:var(--accent);color:white;padding:5px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;">Semua</span>
+        <span style="background:var(--bg);color:var(--text2);padding:5px 14px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;">Like</span>
+        <span style="background:var(--bg);color:var(--text2);padding:5px 14px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;">Komentar</span>
+        <span style="background:var(--bg);color:var(--text2);padding:5px 14px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;">Follow</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <div style="background:var(--accent-light);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center;margin-bottom:4px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#0A84FF,#0040FF);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">A</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;"><b>Andika Pratama</b> menyukai review kamu tentang <b>iPhone 15 Pro</b></div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">2 menit lalu</div>
+          </div>
+          <div style="font-size:24px;">♥</div>
+        </div>
+        <div style="background:var(--accent-light);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center;margin-bottom:4px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#BF5AF2,#FF453A);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">R</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;"><b>Rama Aditya</b> mulai mengikuti kamu</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">15 menit lalu</div>
+          </div>
+          <button class="follow-btn following" style="flex-shrink:0;">Following</button>
+        </div>
+        <div style="background:var(--card);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center;margin-bottom:4px;border:1px solid var(--border);">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#30D158,#0A84FF);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">D</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;"><b>Dita Aulia</b> berkomentar: "Setuju banget, baterai emang jadi kelemahan utama..."</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">1 jam lalu</div>
+          </div>
+          <div style="font-size:24px;">💬</div>
+        </div>
+        <div style="background:var(--card);border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:center;border:1px solid var(--border);">
+          <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0A84FF,#0040FF);display:flex;align-items:center;justify-content:center;font-size:20px;">✦</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;"><b>AI Compare selesai</b> — Hasil perbandingan iPhone 15 Pro vs S24 Ultra sudah siap</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">2 jam lalu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Explore screen placeholder -->
+  <div class="screen" id="screen-explore">
+    <div style="padding:28px;max-width:700px;">
+      <div class="page-title">Jelajahi</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;">
+        <span style="background:var(--accent);color:white;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;">Semua</span>
+        <span style="background:var(--card);border:1px solid var(--border);color:var(--text2);padding:6px 16px;border-radius:20px;font-size:13px;cursor:pointer;">📱 Smartphone</span>
+        <span style="background:var(--card);border:1px solid var(--border);color:var(--text2);padding:6px 16px;border-radius:20px;font-size:13px;cursor:pointer;">💻 Laptop</span>
+        <span style="background:var(--card);border:1px solid var(--border);color:var(--text2);padding:6px 16px;border-radius:20px;font-size:13px;cursor:pointer;">🎧 Audio</span>
+        <span style="background:var(--card);border:1px solid var(--border);color:var(--text2);padding:6px 16px;border-radius:20px;font-size:13px;cursor:pointer;">⌚ Wearable</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="widget-card" style="cursor:pointer;" onclick="showScreen('gadget')">
+          <div style="font-size:48px;text-align:center;margin-bottom:10px;">📱</div>
+          <div style="font-size:14px;font-weight:700;">iPhone 15 Pro</div>
+          <div style="font-size:12px;color:var(--text2);">Apple · ⭐ 4.6</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">1.2K review</div>
+        </div>
+        <div class="widget-card" style="cursor:pointer;">
+          <div style="font-size:48px;text-align:center;margin-bottom:10px;">📷</div>
+          <div style="font-size:14px;font-weight:700;">S24 Ultra</div>
+          <div style="font-size:12px;color:var(--text2);">Samsung · ⭐ 4.4</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">987 review</div>
+        </div>
+        <div class="widget-card" style="cursor:pointer;">
+          <div style="font-size:48px;text-align:center;margin-bottom:10px;">💻</div>
+          <div style="font-size:14px;font-weight:700;">MacBook Pro M3</div>
+          <div style="font-size:12px;color:var(--text2);">Apple · ⭐ 4.8</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">634 review</div>
+        </div>
+        <div class="widget-card" style="cursor:pointer;">
+          <div style="font-size:48px;text-align:center;margin-bottom:10px;">🎧</div>
+          <div style="font-size:14px;font-weight:700;">AirPods Pro 2</div>
+          <div style="font-size:12px;color:var(--text2);">Apple · ⭐ 4.7</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">456 review</div>
+        </div>
+        <div class="widget-card" style="cursor:pointer;">
+          <div style="font-size:48px;text-align:center;margin-bottom:10px;">📱</div>
+          <div style="font-size:14px;font-weight:700;">POCO F6</div>
+          <div style="font-size:12px;color:var(--text2);">Xiaomi · ⭐ 4.3</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">812 review</div>
+        </div>
+        <div class="widget-card" style="cursor:pointer;">
+          <div style="font-size:48px;text-align:center;margin-bottom:10px;">⌚</div>
+          <div style="font-size:14px;font-weight:700;">Apple Watch S9</div>
+          <div style="font-size:12px;color:var(--text2);">Apple · ⭐ 4.5</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">378 review</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- FAB -->
+<div class="fab" id="fab" onclick="showScreen('feed')">＋</div>
+
+<script>
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const screen = document.getElementById('screen-' + name);
+  if (screen) screen.classList.add('active');
+
+  const navMap = { feed:'Beranda', ai:'AI Compare', profile:'Profil', notif:'Notifikasi', explore:'Jelajahi' };
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().includes(navMap[name] || '')) n.classList.add('active');
+  });
+
+  const fab = document.getElementById('fab');
+  fab.style.display = (name === 'auth') ? 'none' : 'flex';
+}
+
+// Tab switching
+document.querySelectorAll('.auth-tab').forEach((tab, i) => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+document.querySelectorAll('.tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    const group = tab.closest('.tabs');
+    group.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>

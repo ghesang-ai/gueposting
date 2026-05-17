@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Polling Preview — DEKAT</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; display: flex; justify-content: center; padding: 20px; gap: 24px; flex-wrap: wrap; }
+  .phone { width: 390px; background: #f5f5f5; border-radius: 40px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); border: 8px solid #1a1a1a; }
+  .label { text-align: center; font-size: 11px; font-weight: 700; color: #888; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Header */
+  .header { background: #c0281f; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { color: white; font-weight: 700; font-size: 16px; }
+  .btn-post { background: white; color: #c0281f; font-weight: 700; font-size: 14px; padding: 7px 20px; border-radius: 20px; border: none; cursor: pointer; }
+  .btn-back { color: white; font-size: 20px; background: none; border: none; cursor: pointer; padding: 4px; }
+
+  /* Sections */
+  .page { overflow-y: auto; max-height: 780px; }
+  .section { background: white; border-radius: 16px; margin: 10px; padding: 14px 16px; }
+  .section-title { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+
+  /* User row */
+  .user-row { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: #c0281f; color: white; font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .user-info { flex: 1; }
+  .user-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 4px; }
+  .verified { color: #c0281f; font-size: 14px; }
+  .visibility { display: inline-flex; align-items: center; gap: 4px; background: #f0f0f0; border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #666; margin-top: 3px; border: none; cursor: pointer; }
+  .btn-template { border: 1.5px solid #c0281f; color: #c0281f; background: none; border-radius: 10px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+  /* Poll section */
+  .poll-section { background: white; border-radius: 16px; margin: 10px; padding: 14px 16px; border: 2px solid #c0281f; }
+  .poll-header { display: flex; align-items: center; gap-8px; justify-content: space-between; margin-bottom: 12px; }
+  .poll-badge { background: #c0281f; color: white; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 5px; }
+  .poll-close { background: #f5f5f5; border: none; border-radius: 8px; padding: 5px 8px; cursor: pointer; font-size: 14px; color: #666; }
+
+  /* Question */
+  .poll-question { background: #fafafa; border: 1.5px solid #e8e8e8; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: #333; margin-bottom: 12px; min-height: 60px; resize: none; width: 100%; outline: none; font-family: inherit; }
+  .poll-question:focus { border-color: #c0281f; }
+  .char-count { text-align: right; font-size: 11px; color: #aaa; margin-top: -8px; margin-bottom: 10px; }
+
+  /* Options */
+  .poll-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .poll-option { display: flex; align-items: center; gap: 8px; }
+  .option-input { flex: 1; background: #f5f5f5; border: 1.5px solid #e8e8e8; border-radius: 12px; padding: 10px 14px; font-size: 14px; color: #333; outline: none; font-family: inherit; transition: border-color 0.2s; }
+  .option-input:focus { border-color: #c0281f; background: white; }
+  .option-num { width: 24px; height: 24px; border-radius: 50%; background: #c0281f; color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .option-remove { background: none; border: none; color: #ccc; cursor: pointer; font-size: 18px; padding: 4px; flex-shrink: 0; line-height: 1; }
+  .option-remove:hover { color: #c0281f; }
+
+  .btn-add-option { display: flex; align-items: center; gap: 6px; color: #c0281f; font-size: 13px; font-weight: 600; background: #fff0f0; border: 1.5px dashed #f0a0a0; border-radius: 12px; padding: 10px 14px; width: 100%; cursor: pointer; justify-content: center; margin-bottom: 12px; }
+
+  /* Duration */
+  .duration-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; }
+  .duration-options { display: flex; gap: 6px; }
+  .duration-btn { flex: 1; padding: 8px 4px; border-radius: 10px; border: 1.5px solid #e8e8e8; background: white; font-size: 12px; font-weight: 600; color: #666; cursor: pointer; text-align: center; transition: all 0.15s; }
+  .duration-btn.active { background: #c0281f; color: white; border-color: #c0281f; }
+
+  /* Content textarea */
+  .content-area { width: 100%; border: none; outline: none; font-size: 14px; color: #333; resize: none; font-family: inherit; min-height: 80px; line-height: 1.5; }
+  .ai-buttons { display: flex; gap: 4px; border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 4px; overflow-x: auto; }
+  .ai-btn { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #888; background: none; border: none; cursor: pointer; white-space: nowrap; padding: 4px 6px; border-radius: 8px; }
+  .ai-btn:hover { background: #fff0f0; color: #c0281f; }
+
+  /* Feed poll card */
+  .post-card { background: white; border-radius: 16px; margin: 10px; padding: 14px 16px; }
+  .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .post-user { flex: 1; }
+  .post-username { font-weight: 700; font-size: 14px; }
+  .post-time { font-size: 12px; color: #aaa; margin-top: 1px; }
+  .post-content { font-size: 14px; color: #333; line-height: 1.5; margin-bottom: 12px; font-weight: 600; }
+
+  /* Poll vote UI */
+  .poll-card { border: 1.5px solid #f0f0f0; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .poll-title { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 10px; }
+  .vote-option { margin-bottom: 8px; cursor: pointer; }
+  .vote-bar-bg { background: #f5f5f5; border-radius: 10px; height: 40px; position: relative; overflow: hidden; border: 1.5px solid #e8e8e8; }
+  .vote-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 8px; transition: width 0.5s ease; }
+  .fill-red { background: linear-gradient(90deg, #ffd5d5, #ffb3b3); }
+  .fill-blue { background: linear-gradient(90deg, #d5e8ff, #b3d0ff); }
+  .fill-green { background: linear-gradient(90deg, #d5f5e0, #b3ecc4); }
+  .fill-purple { background: linear-gradient(90deg, #e8d5ff, #d4b3ff); }
+  .vote-label { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
+  .vote-pct { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 700; color: #666; }
+  .vote-winner .vote-pct { color: #c0281f; }
+  .vote-check { color: #c0281f; font-size: 14px; }
+
+  .poll-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .poll-votes { font-size: 12px; color: #aaa; }
+  .poll-timer { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+
+  /* Vote (before voting) */
+  .vote-option-btn { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1.5px solid #e8e8e8; border-radius: 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; background: white; width: 100%; text-align: left; }
+  .vote-option-btn:hover { border-color: #c0281f; background: #fff5f5; }
+  .vote-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #ddd; flex-shrink: 0; }
+  .vote-text { font-size: 13px; font-weight: 500; color: #333; }
+
+  /* Actions */
+  .post-actions { display: flex; align-items: center; gap: 16px; padding-top: 10px; border-top: 1px solid #f5f5f5; }
+  .action-btn { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #aaa; background: none; border: none; cursor: pointer; }
+  .action-btn.liked { color: #c0281f; }
+
+  /* Tab switcher */
+  .tabs { display: flex; gap: 8px; padding: 10px; }
+  .tab { flex: 1; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 600; text-align: center; cursor: pointer; border: none; transition: all 0.15s; }
+  .tab.active { background: #1a1a1a; color: white; }
+  .tab.inactive { background: #f0f0f0; color: #666; }
+</style>
+</head>
+<body>
+
+<!-- Screen 1: Buat Post dengan Polling -->
+<div>
+  <div class="label">📝 Buat Post — Polling Aktif</div>
+  <div class="phone">
+    <div class="header">
+      <button class="btn-back">←</button>
+      <span class="header-title">Buat Post</span>
+      <button class="btn-post">Post</button>
+    </div>
+    <div class="page">
+
+      <!-- User -->
+      <div class="section">
+        <div class="user-row">
+          <div class="avatar">M</div>
+          <div class="user-info">
+            <div class="user-name">Musa Khalid <span class="verified">✓</span></div>
+            <button class="visibility">🌐 Publik ▾</button>
+          </div>
+          <button class="btn-template">◇ Template</button>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="section">
+        <div class="section-title">Pertanyaan Poll</div>
+        <textarea class="poll-question" placeholder="Tulis pertanyaan polling kamu..." oninput="updateCount(this)">Menurut kamu, mana yang lebih worth it untuk dibeli sekarang?</textarea>
+        <div class="char-count" id="qcount">51/150</div>
+        <div class="ai-buttons">
+          <button class="ai-btn">✨ AI Bantu Tulis</button>
+          <button class="ai-btn">💡 Buat lebih menarik</button>
+          <button class="ai-btn">✍️ Rapikan</button>
+        </div>
+      </div>
+
+      <!-- Poll Builder -->
+      <div class="poll-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="poll-badge">📊 Polling</div>
+          <button class="poll-close">✕</button>
+        </div>
+
+        <div class="poll-options">
+          <div class="poll-option">
+            <div class="option-num">1</div>
+            <input class="option-input" type="text" value="iPhone 17 Pro Max" placeholder="Pilihan 1" />
+            <button class="option-remove">×</button>
+          </div>
+          <div class="poll-option">
+            <div class="option-num">2</div>
+            <input class="option-input" type="text" value="Samsung S25 Ultra" placeholder="Pilihan 2" />
+            <button class="option-remove">×</button>
+          </div>
+          <div class="poll-option">
+            <div class="option-num">3</div>
+            <input class="option-input" type="text" value="Google Pixel 9 Pro" placeholder="Pilihan 3" />
+            <button class="option-remove">×</button>
+          </div>
+          <div class="poll-option">
+            <div class="option-num">4</div>
+            <input class="option-input" type="text" value="" placeholder="+ Tambah pilihan 4 (opsional)" />
+            <button class="option-remove" style="visibility:hidden">×</button>
+          </div>
+        </div>
+
+        <div class="duration-label">⏱ Durasi Polling</div>
+        <div class="duration-options">
+          <button class="duration-btn">1 Hari</button>
+          <button class="duration-btn active">3 Hari</button>
+          <button class="duration-btn">7 Hari</button>
+          <button class="duration-btn">14 Hari</button>
+        </div>
+      </div>
+
+      <!-- Media -->
+      <div class="section">
+        <div class="section-title">Media (opsional)</div>
+        <div style="display:flex;gap:8px">
+          <div style="width:72px;height:72px;border-radius:12px;border:2px dashed #ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#bbb;font-size:11px;cursor:pointer">
+            <span style="font-size:20px">🖼️</span>Tambah
+          </div>
+        </div>
+      </div>
+
+      <div style="height:16px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 2: Poll di Feed (belum vote) -->
+<div>
+  <div class="label">👁 Feed — Belum Vote</div>
+  <div class="phone">
+    <div class="header" style="padding:10px 16px">
+      <img src="data:image/svg+xml,%3Csvg width='80' height='28' viewBox='0 0 80 28' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext y='22' font-family='Arial' font-weight='900' font-size='22' fill='white'%3EDEDKAT%3C/text%3E%3C/svg%3E" style="height:28px" />
+      <div style="display:flex;align-items:center;gap:8px">
+        <button style="background:white/20;border:none;color:white;padding:8px;border-radius:10px;cursor:pointer;font-size:18px">🔔</button>
+      </div>
+    </div>
+    <div class="page" style="padding:8px 0">
+
+      <div class="post-card">
+        <div class="post-header">
+          <div class="avatar" style="width:40px;height:40px;font-size:16px">M</div>
+          <div class="post-user">
+            <div class="post-username">Musa Khalid ✓</div>
+            <div class="post-time">@musa · 2 jam lalu</div>
+          </div>
+          <button style="background:none;border:none;color:#bbb;font-size:18px;cursor:pointer">···</button>
+        </div>
+
+        <div class="post-content">Menurut kamu, mana yang lebih worth it untuk dibeli sekarang? 📱</div>
+
+        <div class="poll-card">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+            <span style="font-size:16px">📊</span>
+            <span style="font-size:12px;font-weight:700;color:#666">POLLING · 2 hari 14 jam tersisa</span>
+          </div>
+
+          <button class="vote-option-btn" onclick="vote(this)">
+            <div class="vote-dot"></div>
+            <span class="vote-text">iPhone 17 Pro Max</span>
+          </button>
+          <button class="vote-option-btn" onclick="vote(this)">
+            <div class="vote-dot"></div>
+            <span class="vote-text">Samsung S25 Ultra</span>
+          </button>
+          <button class="vote-option-btn" onclick="vote(this)">
+            <div class="vote-dot"></div>
+            <span class="vote-text">Google Pixel 9 Pro</span>
+          </button>
+
+          <div class="poll-meta">
+            <span class="poll-votes">47 suara</span>
+            <span class="poll-timer">⏱ Berakhir dalam 3 hari</span>
+          </div>
+        </div>
+
+        <div class="post-actions">
+          <button class="action-btn">🤍 12</button>
+          <button class="action-btn">💬 5</button>
+          <button class="action-btn">↗ Bagikan</button>
+          <button class="action-btn" style="margin-left:auto">🔖</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Screen 3: Poll di Feed (sudah vote) -->
+<div>
+  <div class="label">✅ Feed — Setelah Vote</div>
+  <div class="phone">
+    <div class="header" style="padding:10px 16px">
+      <img src="data:image/svg+xml,%3Csvg width='80' height='28' viewBox='0 0 80 28' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext y='22' font-family='Arial' font-weight='900' font-size='22' fill='white'%3EDEDKAT%3C/text%3E%3C/svg%3E" style="height:28px" />
+      <div style="display:flex;align-items:center;gap:8px">
+        <button style="background:white/20;border:none;color:white;padding:8px;border-radius:10px;cursor:pointer;font-size:18px">🔔</button>
+      </div>
+    </div>
+    <div class="page" style="padding:8px 0">
+
+      <div class="post-card">
+        <div class="post-header">
+          <div class="avatar" style="width:40px;height:40px;font-size:16px">M</div>
+          <div class="post-user">
+            <div class="post-username">Musa Khalid ✓</div>
+            <div class="post-time">@musa · 2 jam lalu</div>
+          </div>
+          <button style="background:none;border:none;color:#bbb;font-size:18px;cursor:pointer">···</button>
+        </div>
+
+        <div class="post-content">Menurut kamu, mana yang lebih worth it untuk dibeli sekarang? 📱</div>
+
+        <div class="poll-card">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+            <span style="font-size:16px">📊</span>
+            <span style="font-size:12px;font-weight:700;color:#666">POLLING · 2 hari 14 jam tersisa</span>
+          </div>
+
+          <!-- Option 1 - winner -->
+          <div class="vote-option vote-winner" style="margin-bottom:8px">
+            <div class="vote-bar-bg">
+              <div class="vote-bar-fill fill-red" style="width:52%"></div>
+              <div class="vote-label"><span class="vote-check">✓</span> iPhone 17 Pro Max</div>
+              <div class="vote-pct">52%</div>
+            </div>
+          </div>
+          <!-- Option 2 -->
+          <div class="vote-option" style="margin-bottom:8px">
+            <div class="vote-bar-bg">
+              <div class="vote-bar-fill fill-blue" style="width:31%"></div>
+              <div class="vote-label">Samsung S25 Ultra</div>
+              <div class="vote-pct">31%</div>
+            </div>
+          </div>
+          <!-- Option 3 -->
+          <div class="vote-option" style="margin-bottom:8px">
+            <div class="vote-bar-bg">
+              <div class="vote-bar-fill fill-green" style="width:17%"></div>
+              <div class="vote-label">Google Pixel 9 Pro</div>
+              <div class="vote-pct">17%</div>
+            </div>
+          </div>
+
+          <div class="poll-meta">
+            <span class="poll-votes">📊 48 suara · Kamu sudah vote</span>
+            <span class="poll-timer">⏱ 3 hari lagi</span>
+          </div>
+        </div>
+
+        <div class="post-actions">
+          <button class="action-btn liked">❤️ 12</button>
+          <button class="action-btn">💬 5</button>
+          <button class="action-btn">↗ Bagikan</button>
+          <button class="action-btn" style="margin-left:auto">🔖</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function updateCount(el) {
+  document.getElementById('qcount').textContent = el.value.length + '/150';
+}
+function vote(btn) {
+  // simulate voting - show results
+  const card = btn.closest('.poll-card');
+  const options = card.querySelectorAll('.vote-option-btn');
+  const results = [52, 31, 17];
+  const colors = ['fill-red', 'fill-blue', 'fill-green'];
+  const labels = ['iPhone 17 Pro Max', 'Samsung S25 Ultra', 'Google Pixel 9 Pro'];
+  const votedIndex = Array.from(options).indexOf(btn);
+
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+      <span style="font-size:16px">📊</span>
+      <span style="font-size:12px;font-weight:700;color:#666">POLLING · 2 hari 14 jam tersisa</span>
+    </div>
+    ${results.map((pct, i) => `
+      <div style="margin-bottom:8px">
+        <div class="vote-bar-bg" style="${i===0?'border-color:#ffaaaa':''}">
+          <div class="vote-bar-fill ${colors[i]}" style="width:${pct}%"></div>
+          <div class="vote-label">${i===votedIndex?'<span class="vote-check">✓</span>':''} ${labels[i]}</div>
+          <div class="vote-pct" style="${i===0?'color:#c0281f;font-weight:800':''}"> ${pct}%</div>
+        </div>
+      </div>
+    `).join('')}
+    <div class="poll-meta">
+      <span class="poll-votes">📊 48 suara · Kamu sudah vote</span>
+      <span class="poll-timer">⏱ 3 hari lagi</span>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

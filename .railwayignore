@@ -1,0 +1,9 @@
+node_modules
+.next
+apps/web
+apps/mobile
+docs
+.git
+*.log
+dist
+build
