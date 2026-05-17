@@ -14,7 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Camera, Link2, MapPin } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import { api } from "../../src/lib/api";
+import * as SecureStore from "expo-secure-store";
+import { API_URL } from "../../src/lib/api";
 
 const SOCIAL_PLATFORMS = [
   { key: "instagram", label: "Instagram", emoji: "📸", placeholder: "username" },
@@ -27,12 +28,21 @@ type SocialKey = typeof SOCIAL_PLATFORMS[number]["key"];
 const RED = "#d42b2b";
 
 async function uploadImage(uri: string): Promise<string> {
+  const token = await SecureStore.getItemAsync("token");
   const formData = new FormData();
   formData.append("file", { uri, name: "image.jpg", type: "image/jpeg" } as any);
-  const res = await api.post("/media/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+  const res = await fetch(`${API_URL}/media/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token ?? ""}` },
+    body: formData,
   });
-  return res.data.url;
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Upload gagal (${res.status}): ${err}`);
+  }
+  const data = await res.json();
+  if (!data.url) throw new Error("Response tidak mengandung URL");
+  return data.url;
 }
 
 export default function EditProfileScreen() {
@@ -40,6 +50,8 @@ export default function EditProfileScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -80,11 +92,14 @@ export default function EditProfileScreen() {
       quality: 0.85,
     });
     if (!result.canceled && result.assets[0]) {
+      setUploadingCover(true);
       try {
         const url = await uploadImage(result.assets[0].uri);
         setCoverUrl(url);
-      } catch {
-        Alert.alert("Gagal", "Tidak dapat mengunggah foto cover.");
+      } catch (e: any) {
+        Alert.alert("Gagal Upload Cover", e?.message ?? "Tidak dapat mengunggah foto cover. Coba lagi.");
+      } finally {
+        setUploadingCover(false);
       }
     }
   }
@@ -97,11 +112,14 @@ export default function EditProfileScreen() {
       quality: 0.85,
     });
     if (!result.canceled && result.assets[0]) {
+      setUploadingAvatar(true);
       try {
         const url = await uploadImage(result.assets[0].uri);
         setAvatarUrl(url);
-      } catch {
-        Alert.alert("Gagal", "Tidak dapat mengunggah foto profil.");
+      } catch (e: any) {
+        Alert.alert("Gagal Upload Foto", e?.message ?? "Tidak dapat mengunggah foto profil. Coba lagi.");
+      } finally {
+        setUploadingAvatar(false);
       }
     }
   }
@@ -160,15 +178,24 @@ export default function EditProfileScreen() {
           ) : (
             <View style={styles.coverPlaceholder} />
           )}
-          <TouchableOpacity style={styles.changeCoverBtn} onPress={pickCover}>
-            <Camera size={14} color="white" strokeWidth={2} />
-            <Text style={styles.changeCoverText}>Ubah Cover</Text>
+          <TouchableOpacity
+            style={[styles.changeCoverBtn, uploadingCover && { opacity: 0.7 }]}
+            onPress={pickCover}
+            disabled={uploadingCover}
+          >
+            {uploadingCover
+              ? <ActivityIndicator size="small" color="white" />
+              : <Camera size={14} color="white" strokeWidth={2} />
+            }
+            <Text style={styles.changeCoverText}>
+              {uploadingCover ? "Mengupload..." : "Ubah Cover"}
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Avatar */}
         <View style={styles.avatarSection}>
-          <TouchableOpacity style={styles.avatarWrapper} onPress={pickAvatar}>
+          <TouchableOpacity style={styles.avatarWrapper} onPress={pickAvatar} disabled={uploadingAvatar}>
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             ) : (
@@ -177,7 +204,10 @@ export default function EditProfileScreen() {
               </View>
             )}
             <View style={styles.cameraOverlay}>
-              <Camera size={14} color="white" strokeWidth={2} />
+              {uploadingAvatar
+                ? <ActivityIndicator size="small" color="white" />
+                : <Camera size={14} color="white" strokeWidth={2} />
+              }
             </View>
           </TouchableOpacity>
         </View>

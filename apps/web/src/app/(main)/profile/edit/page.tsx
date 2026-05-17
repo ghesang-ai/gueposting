@@ -36,6 +36,7 @@ export default function EditProfilePage() {
   const [showOnline, setShowOnline] = useState(true);
   const [allowMessages, setAllowMessages] = useState(false);
   const [uploading, setUploading] = useState<"avatar" | "cover" | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<"avatar" | "cover" | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -131,8 +132,11 @@ export default function EditProfilePage() {
       const res = await api.post("/media/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
       if (type === "avatar") setAvatarUrl(res.data.url);
       else setCoverUrl(res.data.url);
+      setUploadSuccess(type);
+      setTimeout(() => setUploadSuccess(null), 2000);
     } catch {
-      setError("Gagal upload foto");
+      setError(`Gagal upload foto ${type === "cover" ? "cover" : "profil"}. Coba lagi.`);
+      setTimeout(() => setError(""), 4000);
     } finally {
       setUploading(null);
     }
@@ -172,6 +176,16 @@ export default function EditProfilePage() {
 
   return (
     <div className="bg-[#f5f5f5] min-h-screen pb-10">
+
+      {/* Upload toast */}
+      {(error || uploadSuccess) && (
+        <div className={cn(
+          "fixed top-4 left-4 right-4 z-50 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg flex items-center gap-2 transition-all",
+          error ? "bg-[#d42b2b]" : "bg-green-500"
+        )}>
+          {error ? "❌ " + error : "✅ Foto berhasil diupload!"}
+        </div>
+      )}
 
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
