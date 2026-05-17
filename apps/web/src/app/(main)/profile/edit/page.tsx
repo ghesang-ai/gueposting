@@ -129,14 +129,25 @@ export default function EditProfilePage() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await api.post("/media/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
-      if (type === "avatar") setAvatarUrl(res.data.url);
-      else setCoverUrl(res.data.url);
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
+      const res = await fetch(`${apiBase}/media/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token ?? ""}` },
+        body: form,
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`${res.status}: ${errText}`);
+      }
+      const data = await res.json();
+      if (!data.url) throw new Error("No URL in response");
+      if (type === "avatar") setAvatarUrl(data.url);
+      else setCoverUrl(data.url);
       setUploadSuccess(type);
       setTimeout(() => setUploadSuccess(null), 2000);
-    } catch {
-      setError(`Gagal upload foto ${type === "cover" ? "cover" : "profil"}. Coba lagi.`);
-      setTimeout(() => setError(""), 4000);
+    } catch (e: any) {
+      setError(`Gagal upload foto ${type === "cover" ? "cover" : "profil"}: ${e?.message ?? "Coba lagi."}`);
+      setTimeout(() => setError(""), 6000);
     } finally {
       setUploading(null);
     }
