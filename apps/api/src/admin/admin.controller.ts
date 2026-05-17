@@ -4,7 +4,7 @@ import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SetMetadata } from '@nestjs/common';
-import type { JwtPayload } from '@dekat/types';
+import type { JwtPayload } from '@gueposting/types';
 
 const Admin = () => SetMetadata('role', 'admin');
 

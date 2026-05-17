@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
 import { InvitesService } from './invites.service';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { JwtPayload } from '@dekat/types';
+import type { JwtPayload } from '@gueposting/types';
 
 @Controller('invites')
 @UseGuards(JwtGuard)

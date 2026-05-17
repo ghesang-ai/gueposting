@@ -1,5 +1,5 @@
 {
-  "name": "dekat",
+  "name": "gueposting",
   "private": true,
   "scripts": {
     "dev:api": "pnpm --filter api dev",

@@ -2,7 +2,7 @@ import { Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { JwtPayload } from '@dekat/types';
+import type { JwtPayload } from '@gueposting/types';
 
 @Controller('notifications')
 @UseGuards(JwtGuard)

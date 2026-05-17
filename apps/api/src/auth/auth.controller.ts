@@ -7,7 +7,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtGuard } from './guards/jwt.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
-import type { JwtPayload } from '@dekat/types';
+import type { JwtPayload } from '@gueposting/types';
 import type { Request, Response } from 'express';
 
 @Controller('auth')

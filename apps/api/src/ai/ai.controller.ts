@@ -3,7 +3,7 @@ import { AiService } from './ai.service';
 import { CompareRequestDto } from './dto/compare-request.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { JwtPayload } from '@dekat/types';
+import type { JwtPayload } from '@gueposting/types';
 
 @Controller('ai')
 @UseGuards(JwtGuard)

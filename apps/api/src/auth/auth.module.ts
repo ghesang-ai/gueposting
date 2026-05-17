@@ -7,7 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { JwtPayload } from '@dekat/types';
+import { JwtPayload } from '@gueposting/types';
 
 @Injectable()
 class JwtAuthStrategy extends PassportStrategy(Strategy, 'jwt') {
