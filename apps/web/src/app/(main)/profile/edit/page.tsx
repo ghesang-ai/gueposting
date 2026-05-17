@@ -28,6 +28,8 @@ export default function EditProfilePage() {
   const [avatarPositionY, setAvatarPositionY] = useState(50);
   const [coverUrl, setCoverUrl] = useState("");
   const [coverPositionY, setCoverPositionY] = useState(50);
+  const coverRef = useRef<HTMLDivElement>(null);
+  const avatarRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<{ dragging: boolean; startY: number; startPos: number } | null>(null);
   const avatarDragState = useRef<{ dragging: boolean; startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
   const [socialLinks, setSocialLinks] = useState(SOCIAL_PLATFORMS);
@@ -94,6 +96,32 @@ export default function EditProfilePage() {
       avatarDragState.current.dragging = false;
     }
   }, []);
+
+  // Attach non-passive touchmove to cover so e.preventDefault() actually works on mobile
+  useEffect(() => {
+    const el = coverRef.current;
+    if (!el) return;
+    const onTouchMove = (e: globalThis.TouchEvent) => {
+      if (!dragState.current?.dragging) return;
+      e.preventDefault();
+      handleCoverDragMove(e.touches[0].clientY, el.clientHeight);
+    };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, [handleCoverDragMove]);
+
+  // Attach non-passive touchmove to avatar so e.preventDefault() actually works on mobile
+  useEffect(() => {
+    const el = avatarRef.current;
+    if (!el) return;
+    const onTouchMove = (e: globalThis.TouchEvent) => {
+      if (!avatarDragState.current?.dragging) return;
+      e.preventDefault();
+      handleAvatarDragMove(e.touches[0].clientX, e.touches[0].clientY, el.clientWidth, el.clientHeight);
+    };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, [handleAvatarDragMove]);
 
   const handleUpload = async (file: File, type: "avatar" | "cover") => {
     setUploading(type);
@@ -178,15 +206,15 @@ export default function EditProfilePage() {
       <div className="relative">
         {/* Cover area */}
         <div
+          ref={coverRef}
           className="h-40 relative overflow-hidden"
           onMouseDown={coverUrl ? (e) => { e.preventDefault(); handleCoverDragStart(e.clientY); } : undefined}
           onMouseMove={coverUrl ? (e) => { if (dragState.current?.dragging) handleCoverDragMove(e.clientY, e.currentTarget.clientHeight); } : undefined}
           onMouseUp={coverUrl ? () => handleCoverDragEnd() : undefined}
           onMouseLeave={coverUrl ? () => handleCoverDragEnd() : undefined}
           onTouchStart={coverUrl ? (e) => handleCoverDragStart(e.touches[0].clientY) : undefined}
-          onTouchMove={coverUrl ? (e) => { e.preventDefault(); handleCoverDragMove(e.touches[0].clientY, e.currentTarget.clientHeight); } : undefined}
           onTouchEnd={coverUrl ? () => handleCoverDragEnd() : undefined}
-          style={coverUrl ? { cursor: dragState.current?.dragging ? "grabbing" : "grab" } : undefined}
+          style={coverUrl ? { cursor: "grab", touchAction: "none" } : undefined}
         >
           {coverUrl ? (
             <>
@@ -234,15 +262,15 @@ export default function EditProfilePage() {
         <div className="absolute left-4 -bottom-10">
           <div className="relative">
             <div
+              ref={avatarRef}
               className="w-20 h-20 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gradient-to-br from-[#c0281f] to-[#e8453a]"
               onMouseDown={avatarUrl ? (e) => { e.preventDefault(); handleAvatarDragStart(e.clientX, e.clientY); } : undefined}
               onMouseMove={avatarUrl ? (e) => { if (avatarDragState.current?.dragging) handleAvatarDragMove(e.clientX, e.clientY, e.currentTarget.clientWidth, e.currentTarget.clientHeight); } : undefined}
               onMouseUp={avatarUrl ? () => handleAvatarDragEnd() : undefined}
               onMouseLeave={avatarUrl ? () => handleAvatarDragEnd() : undefined}
               onTouchStart={avatarUrl ? (e) => handleAvatarDragStart(e.touches[0].clientX, e.touches[0].clientY) : undefined}
-              onTouchMove={avatarUrl ? (e) => { e.preventDefault(); handleAvatarDragMove(e.touches[0].clientX, e.touches[0].clientY, e.currentTarget.clientWidth, e.currentTarget.clientHeight); } : undefined}
               onTouchEnd={avatarUrl ? () => handleAvatarDragEnd() : undefined}
-              style={avatarUrl ? { cursor: avatarDragState.current?.dragging ? "grabbing" : "grab" } : undefined}
+              style={avatarUrl ? { cursor: "grab", touchAction: "none" } : undefined}
             >
               {avatarUrl
                 ? (
