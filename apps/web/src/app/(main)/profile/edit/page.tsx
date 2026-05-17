@@ -212,9 +212,9 @@ export default function EditProfilePage() {
           onMouseMove={coverUrl ? (e) => { if (dragState.current?.dragging) handleCoverDragMove(e.clientY, e.currentTarget.clientHeight); } : undefined}
           onMouseUp={coverUrl ? () => handleCoverDragEnd() : undefined}
           onMouseLeave={coverUrl ? () => handleCoverDragEnd() : undefined}
-          onTouchStart={coverUrl ? (e) => handleCoverDragStart(e.touches[0].clientY) : undefined}
+          onTouchStart={coverUrl ? (e) => { if ((e.target as HTMLElement).closest("[data-upload]")) return; handleCoverDragStart(e.touches[0].clientY); } : undefined}
           onTouchEnd={coverUrl ? () => handleCoverDragEnd() : undefined}
-          style={coverUrl ? { cursor: "grab", touchAction: "none" } : undefined}
+          style={coverUrl ? { cursor: "grab" } : undefined}
         >
           {coverUrl ? (
             <>
@@ -238,12 +238,11 @@ export default function EditProfilePage() {
           )}
           <label
             htmlFor="cover-upload"
-            style={{ touchAction: "auto" }}
+            data-upload="cover"
             className={cn(
               "absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 cursor-pointer select-none z-10",
               uploading === "cover" && "opacity-70 pointer-events-none"
             )}
-            onTouchStart={(e) => e.stopPropagation()}
           >
             {uploading === "cover"
               ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
@@ -251,14 +250,14 @@ export default function EditProfilePage() {
             }
             Ubah Cover
           </label>
+          <input
+            id="cover-upload"
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], "cover")}
+          />
         </div>
-        <input
-          id="cover-upload"
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], "cover")}
-        />
 
         {/* Avatar overlapping */}
         <div className="absolute left-4 -bottom-10">
@@ -272,7 +271,7 @@ export default function EditProfilePage() {
               onMouseLeave={avatarUrl ? () => handleAvatarDragEnd() : undefined}
               onTouchStart={avatarUrl ? (e) => handleAvatarDragStart(e.touches[0].clientX, e.touches[0].clientY) : undefined}
               onTouchEnd={avatarUrl ? () => handleAvatarDragEnd() : undefined}
-              style={avatarUrl ? { cursor: "grab", touchAction: "none" } : undefined}
+              style={avatarUrl ? { cursor: "grab" } : undefined}
             >
               {avatarUrl
                 ? (
