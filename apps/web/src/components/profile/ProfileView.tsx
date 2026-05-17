@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Link2, Settings, ChevronRight, Heart, MessageCircle, Star, Camera } from "lucide-react";
+import { MapPin, Link2, Settings, ChevronRight, Heart, MessageCircle, Star, Camera, LogOut, UserPen } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { cn } from "@/lib/utils";
@@ -83,6 +83,8 @@ export function ProfileView({ username, isOwn }: { username: string; isOwn: bool
   const [following, setFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("Postingan");
   const [followLoading, setFollowLoading] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -113,6 +115,23 @@ export function ProfileView({ username, isOwn }: { username: string; isOwn: bool
     };
     if (username) load();
   }, [username]);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenu]);
+
+  const handleLogout = () => {
+    setShowMenu(false);
+    logout();
+    router.push("/login");
+  };
 
   const toggleFollow = async () => {
     setFollowLoading(true);
@@ -185,10 +204,29 @@ export function ProfileView({ username, isOwn }: { username: string; isOwn: bool
                 <span className="text-white/70 font-medium" style={{ fontSize: 9 }}>Gadget User Experience, Posting &amp; Sharing</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => router.push("/profile/edit")} className="text-white/80 hover:text-white">
+            <div className="relative flex items-center gap-3" ref={menuRef}>
+              <button onClick={() => setShowMenu((v) => !v)} className="text-white/80 hover:text-white">
                 <Settings size={20} />
               </button>
+              {showMenu && (
+                <div className="absolute top-8 right-0 bg-white rounded-2xl shadow-xl overflow-hidden z-50 min-w-[180px]">
+                  <button
+                    onClick={() => { setShowMenu(false); router.push("/profile/edit"); }}
+                    className="flex items-center gap-3 w-full px-4 py-3.5 text-sm font-semibold text-gray-800 hover:bg-gray-50 active:bg-gray-100"
+                  >
+                    <UserPen size={16} className="text-gray-500" />
+                    Edit Profil
+                  </button>
+                  <div className="h-px bg-gray-100 mx-4" />
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 w-full px-4 py-3.5 text-sm font-semibold text-[#d42b2b] hover:bg-red-50 active:bg-red-100"
+                  >
+                    <LogOut size={16} />
+                    Keluar
+                  </button>
+                </div>
+              )}
             </div>
           </>
         ) : (
