@@ -3,12 +3,11 @@ import {
   View, Text, FlatList, StyleSheet, RefreshControl,
   TouchableOpacity, TextInput, ScrollView, ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { TrendingUp } from "lucide-react-native";
 import { api } from "../../src/lib/api";
 import PostCard, { Post } from "../../src/components/PostCard";
+import AppHeader from "../../src/components/AppHeader";
 
-const HEADER_RED = "#c0281f";
 const RED = "#d42b2b";
 
 const FILTERS = [
@@ -80,13 +79,9 @@ export default function ExploreScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
-      {/* Red sticky header */}
-      <SafeAreaView edges={["top"]} style={{ backgroundColor: HEADER_RED }}>
-        {/* Title row */}
-        <View style={styles.titleRow}>
-          <TrendingUp size={20} color="white" strokeWidth={2.5} />
-          <Text style={styles.title}>Jelajah</Text>
-        </View>
+      {/* Header */}
+      <AppHeader title="Jelajah" />
+      <View style={{ backgroundColor: RED }}>
 
         {/* Search bar */}
         <View style={styles.searchWrapper}>
@@ -125,7 +120,7 @@ export default function ExploreScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-      </SafeAreaView>
+      </View>
 
       {loading && posts.length === 0 ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -214,7 +209,7 @@ const styles = StyleSheet.create({
     color: "white",
   },
   chipTextActive: {
-    color: HEADER_RED,
+    color: RED,
   },
   trendingLabel: {
     flexDirection: "row",

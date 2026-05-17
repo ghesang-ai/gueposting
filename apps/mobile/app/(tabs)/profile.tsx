@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { Settings } from "lucide-react-native";
 import { useAuthStore } from "../../src/stores/auth";
 import { api } from "../../src/lib/api";
+import AppHeader from "../../src/components/AppHeader";
 
 const { width } = Dimensions.get("window");
 const POST_SIZE = (width - 48) / 2;
@@ -204,13 +205,24 @@ export default function ProfileScreen() {
       {/* Badge section */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Badge</Text>
-        <View style={styles.badgeItem}>
-          <Text style={styles.badgeEmoji}>⭐</Text>
-          <View>
-            <Text style={styles.badgeName}>Rising Star</Text>
-            <Text style={styles.badgeDesc}>Aktif berkontribusi di komunitas</Text>
-          </View>
-        </View>
+        {(() => {
+          const score = profile?.trustScore ?? user?.trustScore ?? 0;
+          const badges = [];
+          if (postCount >= 1) badges.push({ emoji: "✍️", name: "Kontributor Pertama", desc: "Sudah membuat postingan pertama" });
+          if (postCount >= 10) badges.push({ emoji: "🔥", name: "Aktif Posting", desc: "Sudah membuat 10+ postingan" });
+          if (score >= 5) badges.push({ emoji: "⭐", name: "Rising Star", desc: "Aktif berkontribusi di komunitas" });
+          if (score >= 8) badges.push({ emoji: "💎", name: "Trusted Member", desc: "Trust score tinggi di komunitas" });
+          if (badges.length === 0) badges.push({ emoji: "🌱", name: "Member Baru", desc: "Selamat datang di GUEPOSTING!" });
+          return badges.map((b) => (
+            <View key={b.name} style={styles.badgeItem}>
+              <Text style={styles.badgeEmoji}>{b.emoji}</Text>
+              <View>
+                <Text style={styles.badgeName}>{b.name}</Text>
+                <Text style={styles.badgeDesc}>{b.desc}</Text>
+              </View>
+            </View>
+          ));
+        })()}
       </View>
 
       {/* Kontribusi section */}
@@ -218,10 +230,10 @@ export default function ProfileScreen() {
         <Text style={styles.cardTitle}>Kontribusi</Text>
         <View style={styles.kontribusiGrid}>
           {[
-            { label: "Review", value: 0 },
-            { label: "Polling", value: 0 },
-            { label: "Diskusi", value: 0 },
-            { label: "Komentar", value: 0 },
+            { label: "Review", value: posts.filter(p => (p as any).type === "review").length },
+            { label: "Diskusi", value: posts.filter(p => (p as any).type === "discussion").length },
+            { label: "Foto", value: posts.filter(p => (p as any).type === "photo").length },
+            { label: "Lainnya", value: posts.filter(p => !["review","discussion","photo"].includes((p as any).type ?? "")).length },
           ].map((k) => (
             <View key={k.label} style={styles.kontribusiBox}>
               <Text style={styles.kontribusiValue}>{k.value}</Text>
@@ -250,14 +262,16 @@ export default function ProfileScreen() {
 
   if (loadingProfile) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#d42b2b" />
+      <SafeAreaView style={styles.loadingContainer} edges={[]}>
+        <AppHeader title="Profil" />
+        <ActivityIndicator size="large" color="#d42b2b" style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={[]}>
+      <AppHeader title="Profil" />
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}

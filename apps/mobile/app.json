@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.dekat.app"
+      "bundleIdentifier": "com.gueposting.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.dekat.app"
+      "package": "com.gueposting.app"
     },
     "plugins": ["expo-router"]
   }

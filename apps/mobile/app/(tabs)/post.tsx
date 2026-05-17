@@ -21,6 +21,10 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  MessageCircle,
+  MapPin,
+  Tag,
+  Clock,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { api, API_URL } from "../../src/lib/api";
@@ -73,7 +77,7 @@ export default function PostScreen() {
   const user = useAuthStore((s) => s.user);
 
   // form state
-  const [postType, setPostType] = useState<PostType>("review");
+  const [postType, setPostType] = useState<PostType>("discussion");
   const [content, setContent] = useState("");
   const [ratingValue, setRatingValue] = useState<number | null>(null);
   const [images, setImages] = useState<string[]>([]);
@@ -87,6 +91,14 @@ export default function PostScreen() {
   const [selectedGadget, setSelectedGadget] = useState<Gadget | null>(null);
   const [gadgetLoading, setGadgetLoading] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // polling
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [pollDuration, setPollDuration] = useState(3);
+
+  // settings
+  const [allowComments, setAllowComments] = useState(true);
 
   // upload / submit
   const [uploading, setUploading] = useState(false);
@@ -530,6 +542,93 @@ export default function PostScreen() {
             )}
           </View>
 
+          {/* ── Polling (discussion only) ── */}
+          {postType === "discussion" && (
+            <View style={styles.card}>
+              <Text style={styles.sectionLabel}>POLLING (OPSIONAL)</Text>
+              <TextInput
+                style={styles.pollQuestion}
+                placeholder="Tulis pertanyaan polling..."
+                placeholderTextColor="#9ca3af"
+                value={pollQuestion}
+                onChangeText={setPollQuestion}
+              />
+              {pollOptions.map((opt, i) => (
+                <View key={i} style={styles.pollOptionRow}>
+                  <TextInput
+                    style={styles.pollOptionInput}
+                    placeholder={`Pilihan ${i + 1}`}
+                    placeholderTextColor="#9ca3af"
+                    value={opt}
+                    onChangeText={(v) => {
+                      const next = [...pollOptions];
+                      next[i] = v;
+                      setPollOptions(next);
+                    }}
+                  />
+                  {pollOptions.length > 2 && (
+                    <TouchableOpacity onPress={() => setPollOptions(pollOptions.filter((_, idx) => idx !== i))}>
+                      <X size={16} color="#9ca3af" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+              {pollOptions.length < 5 && (
+                <TouchableOpacity
+                  style={styles.addOptionBtn}
+                  onPress={() => setPollOptions([...pollOptions, ""])}
+                >
+                  <Text style={styles.addOptionText}>+ Tambah Pilihan</Text>
+                </TouchableOpacity>
+              )}
+              <View style={styles.pollDurationRow}>
+                <Text style={styles.pollDurationLabel}>Durasi Polling:</Text>
+                {[1, 3, 7].map((d) => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[styles.durationChip, pollDuration === d && styles.durationChipActive]}
+                    onPress={() => setPollDuration(d)}
+                  >
+                    <Text style={[styles.durationText, pollDuration === d && styles.durationTextActive]}>
+                      {d} hari
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ── Pengaturan Post ── */}
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>PENGATURAN</Text>
+            <TouchableOpacity style={styles.settingRow} onPress={() => setAllowComments(v => !v)}>
+              <View style={styles.settingLeft}>
+                <MessageCircle size={16} color="#6b7280" />
+                <Text style={styles.settingLabel}>Izinkan komentar</Text>
+              </View>
+              <View style={[styles.toggle, allowComments && styles.toggleOn]}>
+                <View style={[styles.toggleThumb, allowComments && styles.toggleThumbOn]} />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Lokasi / Tag / Jadwal ── */}
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>TAMBAHAN</Text>
+            <View style={styles.extraRow}>
+              {[
+                { icon: MapPin, label: "Lokasi" },
+                { icon: Tag, label: "Tag Teman" },
+                { icon: Clock, label: "Jadwalkan" },
+              ].map(({ icon: Icon, label }) => (
+                <TouchableOpacity key={label} style={styles.extraBtn}>
+                  <Icon size={15} color="#6b7280" />
+                  <Text style={styles.extraBtnText}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -779,4 +878,65 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     lineHeight: 18,
   },
+
+  // polling
+  pollQuestion: {
+    borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10,
+    padding: 12, fontSize: 14, color: "#111", marginBottom: 10,
+  },
+  pollOptionRow: {
+    flexDirection: "row", alignItems: "center",
+    gap: 8, marginBottom: 8,
+  },
+  pollOptionInput: {
+    flex: 1, borderWidth: 1, borderColor: "#e5e7eb",
+    borderRadius: 10, padding: 10, fontSize: 13, color: "#111",
+  },
+  addOptionBtn: {
+    paddingVertical: 8, alignItems: "center",
+    borderWidth: 1, borderColor: "#e5e7eb",
+    borderRadius: 10, borderStyle: "dashed", marginBottom: 12,
+  },
+  addOptionText: { color: RED, fontSize: 13, fontWeight: "600" },
+  pollDurationRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  pollDurationLabel: { fontSize: 13, color: "#6b7280", marginRight: 4 },
+  durationChip: {
+    paddingHorizontal: 14, paddingVertical: 6,
+    borderRadius: 20, backgroundColor: "#f3f4f6",
+    borderWidth: 1, borderColor: "#e5e7eb",
+  },
+  durationChipActive: { backgroundColor: RED, borderColor: RED },
+  durationText: { fontSize: 12, color: "#6b7280", fontWeight: "600" },
+  durationTextActive: { color: "#fff" },
+
+  // settings
+  settingRow: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", paddingVertical: 4,
+  },
+  settingLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  settingLabel: { fontSize: 14, color: "#374151" },
+  toggle: {
+    width: 44, height: 24, borderRadius: 12,
+    backgroundColor: "#e5e7eb", padding: 2,
+    justifyContent: "center",
+  },
+  toggleOn: { backgroundColor: RED },
+  toggleThumb: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: "#fff",
+    shadowColor: "#000", shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 1 }, shadowRadius: 2,
+  },
+  toggleThumbOn: { alignSelf: "flex-end" },
+
+  // extra
+  extraRow: { flexDirection: "row", gap: 8 },
+  extraBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 6,
+    paddingVertical: 10, borderRadius: 12,
+    backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb",
+  },
+  extraBtnText: { fontSize: 12, color: "#6b7280", fontWeight: "500" },
 });

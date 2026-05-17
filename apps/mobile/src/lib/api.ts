@@ -1,7 +1,7 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
-export const API_URL = "https://dekat-api.vercel.app/api/v1";
+export const API_URL = "https://gueposting.vercel.app/api/v1";
 
 export const api = axios.create({ baseURL: API_URL });
 

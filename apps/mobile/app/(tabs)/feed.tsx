@@ -1,28 +1,30 @@
 import { useEffect, useState, useCallback } from "react";
 import {
-  View, Text, FlatList, StyleSheet, RefreshControl, Image,
-  TouchableOpacity, TextInput, ScrollView, ActivityIndicator,
+  View, Text, FlatList, StyleSheet, RefreshControl,
+  TouchableOpacity, ScrollView, ActivityIndicator, Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, MessageCircle, Search } from "lucide-react-native";
+import { Search } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { useAuthStore } from "../../src/stores/auth";
 import { api } from "../../src/lib/api";
 import PostCard, { Post } from "../../src/components/PostCard";
+import AppHeader from "../../src/components/AppHeader";
 
 const RED = "#d42b2b";
-const HEADER_RED = "#c0281f";
 
-const GADGETS = [
-  { id: "d87dba92-e880-416a-b093-e0b6a187dcfe", name: "iPhone 17", brand: "Apple", emoji: "📱" },
-  { id: "32062a42-d258-4310-bb42-760567e812a6", name: "S26 Ultra", brand: "Samsung", emoji: "📲" },
-  { id: "aacabfc3-4310-4a68-ba07-6f5f2a5ccd39", name: "MacBook M5", brand: "Apple", emoji: "💻" },
-  { id: "5f4cccfe-a8ee-4eaf-aff1-a29d1dd40ea1", name: "AirPods Pro 3", brand: "Apple", emoji: "🎧" },
-  { id: "eb1d2c80-2358-4257-8d2f-e934103dec5f", name: "Vivo X300 Pro", brand: "Vivo", emoji: "📸" },
-  { id: "1c9dfa3c-b64f-4317-94e2-57fcaad2f82d", name: "Watch Ultra 3", brand: "Apple", emoji: "⌚" },
-];
+interface Gadget {
+  id: string;
+  name: string;
+  brand: string;
+  imageUrl: string | null;
+}
 
 export default function FeedScreen() {
+  const router = useRouter();
+  const { user } = useAuthStore();
   const [tab, setTab] = useState<"semua" | "following">("semua");
   const [posts, setPosts] = useState<Post[]>([]);
+  const [gadgets, setGadgets] = useState<Gadget[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -40,6 +42,23 @@ export default function FeedScreen() {
     finally { setLoading(false); }
   }, []);
 
+  const fetchGadgets = useCallback(async () => {
+    try {
+      const res = await api.get("/gadgets/trending");
+      setGadgets(res.data ?? []);
+    } catch {
+      try {
+        const res = await api.get("/gadgets?limit=6");
+        const data = res.data?.data ?? res.data ?? [];
+        setGadgets(data.slice(0, 6));
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGadgets();
+  }, [fetchGadgets]);
+
   useEffect(() => {
     setLoading(true);
     setPage(1);
@@ -50,9 +69,13 @@ export default function FeedScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     setPage(1);
-    await fetchPosts(1, tab);
+    await Promise.all([fetchPosts(1, tab), fetchGadgets()]);
     setRefreshing(false);
   };
+
+  const displayName = user?.displayName ?? "U";
+  const avatarUrl = user?.avatarUrl ?? null;
+  const initial = displayName[0]?.toUpperCase() ?? "U";
 
   const header = (
     <>
@@ -63,10 +86,14 @@ export default function FeedScreen() {
           <TouchableOpacity><Text style={styles.seeAll}>Lihat semua ›</Text></TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-          {GADGETS.map(g => (
+          {gadgets.map(g => (
             <TouchableOpacity key={g.id} style={styles.gadgetItem}>
-              <View style={styles.gadgetEmoji}>
-                <Text style={{ fontSize: 26 }}>{g.emoji}</Text>
+              <View style={styles.gadgetImageBox}>
+                {g.imageUrl ? (
+                  <Image source={{ uri: g.imageUrl }} style={styles.gadgetImage} resizeMode="contain" />
+                ) : (
+                  <Text style={{ fontSize: 26 }}>📱</Text>
+                )}
               </View>
               <Text style={styles.gadgetItemName} numberOfLines={1}>{g.name}</Text>
               <Text style={styles.gadgetItemBrand}>{g.brand}</Text>
@@ -78,13 +105,19 @@ export default function FeedScreen() {
       {/* Create Post */}
       <View style={styles.section}>
         <View style={styles.createRow}>
-          <View style={styles.createAvatar}><Text style={styles.createAvatarText}>D</Text></View>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.createAvatarImg} />
+          ) : (
+            <View style={styles.createAvatar}>
+              <Text style={styles.createAvatarText}>{initial}</Text>
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.createTitle}>Apa yang baru?</Text>
             <Text style={styles.createSub}>Bagikan ke komunitas GUEPOSTING</Text>
           </View>
           <TouchableOpacity style={styles.createBtn}>
-            <Text style={styles.createBtnText}>✏ Buat Post</Text>
+            <Text style={styles.createBtnText}>✏️ Buat Post</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.createActions}>
@@ -101,28 +134,14 @@ export default function FeedScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
-      {/* Red Header */}
-      <SafeAreaView edges={["top"]} style={{ backgroundColor: HEADER_RED }}>
-        <View style={styles.headerTop}>
-          <Image source={require("../../assets/logo-white.png")} style={styles.logo} resizeMode="contain" />
-          <View style={styles.headerIcons}>
-            <TouchableOpacity>
-              <Bell size={22} color="white" strokeWidth={1.8} />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <MessageCircle size={22} color="white" strokeWidth={1.8} />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.searchWrapper}>
+      {/* Header */}
+      <AppHeader showIcons />
+      <View style={{ backgroundColor: RED, paddingHorizontal: 16, paddingBottom: 12 }}>
+        <TouchableOpacity style={styles.searchWrapper} onPress={() => router.push("/search")} activeOpacity={0.8}>
           <Search size={15} color="#9ca3af" style={{ marginRight: 6 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Cari gadget, teman, atau topik..."
-            placeholderTextColor="#9ca3af"
-          />
-        </View>
-      </SafeAreaView>
+          <Text style={styles.searchPlaceholder}>Cari gadget, teman, atau topik...</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -170,11 +189,8 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10 },
-  logo: { height: 40, width: 140 },
-  headerIcons: { flexDirection: "row", gap: 16 },
-  searchWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: "white", borderRadius: 999, marginHorizontal: 16, marginBottom: 12, paddingHorizontal: 12, height: 40 },
-  searchInput: { flex: 1, fontSize: 14, color: "#374151" },
+  searchWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: "white", borderRadius: 999, paddingHorizontal: 12, height: 40 },
+  searchPlaceholder: { flex: 1, fontSize: 14, color: "#9ca3af" },
   tabs: { backgroundColor: "white", flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
   tab: { paddingHorizontal: 20, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: "#e5e7eb" },
   tabActive: { backgroundColor: RED, borderColor: RED },
@@ -184,12 +200,14 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   sectionTitle: { fontSize: 13, fontWeight: "800", color: "#1f2937", letterSpacing: 0.5 },
   seeAll: { fontSize: 12, fontWeight: "700", color: RED },
-  gadgetItem: { alignItems: "center", width: 72 },
-  gadgetEmoji: { width: 64, height: 64, borderRadius: 16, backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", justifyContent: "center", alignItems: "center", marginBottom: 6 },
-  gadgetItemName: { fontSize: 11, fontWeight: "600", color: "#374151", textAlign: "center", maxWidth: 68 },
+  gadgetItem: { alignItems: "center", width: 76 },
+  gadgetImageBox: { width: 68, height: 68, borderRadius: 16, backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", justifyContent: "center", alignItems: "center", marginBottom: 6, overflow: "hidden" },
+  gadgetImage: { width: 60, height: 60 },
+  gadgetItemName: { fontSize: 11, fontWeight: "600", color: "#374151", textAlign: "center", maxWidth: 72 },
   gadgetItemBrand: { fontSize: 10, color: "#9ca3af", textAlign: "center" },
   createRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
   createAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: RED, justifyContent: "center", alignItems: "center" },
+  createAvatarImg: { width: 40, height: 40, borderRadius: 20 },
   createAvatarText: { color: "white", fontWeight: "700", fontSize: 14 },
   createTitle: { fontSize: 14, fontWeight: "600", color: "#1f2937" },
   createSub: { fontSize: 12, color: "#9ca3af" },
