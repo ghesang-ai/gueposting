@@ -15,4 +15,4 @@ RUN pnpm --filter api build
 ENV NODE_ENV=production
 EXPOSE 3001
 WORKDIR /app/apps/api
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma db push && node dist/src/main.js"]
