@@ -87,10 +87,27 @@ export default function PostScreen() {
   // gadget picker
   const [gadgetSearch, setGadgetSearch] = useState("");
   const [gadgetResults, setGadgetResults] = useState<Gadget[]>([]);
+  const [gadgetSearchDone, setGadgetSearchDone] = useState(false);
   const [trendingGadgets, setTrendingGadgets] = useState<Gadget[]>([]);
   const [selectedGadget, setSelectedGadget] = useState<Gadget | null>(null);
   const [gadgetLoading, setGadgetLoading] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // new gadget form
+  const [showNewGadgetForm, setShowNewGadgetForm] = useState(false);
+  const [newGadgetName, setNewGadgetName] = useState("");
+  const [newGadgetBrand, setNewGadgetBrand] = useState("");
+  const [newGadgetCategory, setNewGadgetCategory] = useState("smartphone");
+  const [savingGadget, setSavingGadget] = useState(false);
+
+  const GADGET_CATEGORIES = [
+    { value: "smartphone", label: "📱 Smartphone" },
+    { value: "laptop",     label: "💻 Laptop" },
+    { value: "tablet",     label: "📟 Tablet" },
+    { value: "wearable",   label: "⌚ Wearable" },
+    { value: "audio",      label: "🎧 Audio" },
+    { value: "other",      label: "🔌 Lainnya" },
+  ];
 
   // polling
   const [pollQuestion, setPollQuestion] = useState("");
@@ -123,14 +140,13 @@ export default function PostScreen() {
     searchTimer.current = setTimeout(async () => {
       setGadgetLoading(true);
       try {
-        const res = await api.get<{ gadgets: Gadget[] }>(
-          `/gadgets?search=${encodeURIComponent(text)}&limit=6`
-        );
-        setGadgetResults(res.data?.gadgets ?? []);
+        const res = await api.get(`/gadgets?search=${encodeURIComponent(text)}&limit=6`);
+        setGadgetResults(res.data?.data ?? res.data?.gadgets ?? res.data ?? []);
       } catch {
         setGadgetResults([]);
       } finally {
         setGadgetLoading(false);
+        setGadgetSearchDone(true);
       }
     }, 300);
   }, []);
@@ -139,6 +155,26 @@ export default function PostScreen() {
     setSelectedGadget(g);
     setGadgetSearch("");
     setGadgetResults([]);
+    setGadgetSearchDone(false);
+    setShowNewGadgetForm(false);
+  };
+
+  const saveNewGadget = async () => {
+    if (!newGadgetName.trim() || !newGadgetBrand.trim()) return;
+    setSavingGadget(true);
+    try {
+      const res = await api.post("/gadgets", {
+        name: newGadgetName.trim(),
+        brand: newGadgetBrand.trim(),
+        category: newGadgetCategory,
+      });
+      selectGadget(res.data);
+      setNewGadgetName(""); setNewGadgetBrand(""); setNewGadgetCategory("smartphone");
+    } catch (e: any) {
+      Alert.alert("Gagal", e?.response?.data?.message ?? "Gagal menambah gadget.");
+    } finally {
+      setSavingGadget(false);
+    }
   };
 
   // image picker + upload
@@ -367,6 +403,69 @@ export default function PostScreen() {
                     </View>
                   </TouchableOpacity>
                 ))}
+              </View>
+            )}
+
+            {/* No results — offer to add new gadget */}
+            {gadgetSearchDone && gadgetResults.length === 0 && gadgetSearch.trim() && !showNewGadgetForm && (
+              <TouchableOpacity
+                style={styles.addNewGadgetRow}
+                onPress={() => { setShowNewGadgetForm(true); setNewGadgetName(gadgetSearch); }}
+              >
+                <View style={styles.addNewGadgetIcon}><Text>+</Text></View>
+                <View>
+                  <Text style={styles.addNewGadgetText}>Tambah "{gadgetSearch}" sebagai gadget baru</Text>
+                  <Text style={styles.addNewGadgetSub}>Belum ada di database GUEPOSTING</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* New gadget form */}
+            {showNewGadgetForm && (
+              <View style={styles.newGadgetForm}>
+                <Text style={styles.newGadgetTitle}>+ Tambah Gadget Baru</Text>
+                <TextInput
+                  style={styles.newGadgetInput}
+                  value={newGadgetName}
+                  onChangeText={setNewGadgetName}
+                  placeholder="Nama gadget (contoh: Galaxy S25 FE)"
+                  placeholderTextColor="#9ca3af"
+                />
+                <TextInput
+                  style={styles.newGadgetInput}
+                  value={newGadgetBrand}
+                  onChangeText={setNewGadgetBrand}
+                  placeholder="Brand (contoh: Samsung)"
+                  placeholderTextColor="#9ca3af"
+                />
+                <View style={styles.categoryGrid}>
+                  {GADGET_CATEGORIES.map(cat => (
+                    <TouchableOpacity
+                      key={cat.value}
+                      style={[styles.categoryBtn, newGadgetCategory === cat.value && styles.categoryBtnActive]}
+                      onPress={() => setNewGadgetCategory(cat.value)}
+                    >
+                      <Text style={[styles.categoryBtnText, newGadgetCategory === cat.value && styles.categoryBtnTextActive]}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.newGadgetActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowNewGadgetForm(false)}>
+                    <Text style={styles.cancelBtnText}>Batal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveGadgetBtn, (savingGadget || !newGadgetName.trim() || !newGadgetBrand.trim()) && { opacity: 0.5 }]}
+                    onPress={saveNewGadget}
+                    disabled={savingGadget || !newGadgetName.trim() || !newGadgetBrand.trim()}
+                  >
+                    {savingGadget
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={styles.saveGadgetBtnText}>Simpan & Pilih</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
 
@@ -929,6 +1028,48 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 }, shadowRadius: 2,
   },
   toggleThumbOn: { alignSelf: "flex-end" },
+
+  // new gadget form
+  addNewGadgetRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10,
+    padding: 10, marginTop: 6,
+  },
+  addNewGadgetIcon: {
+    width: 32, height: 32, borderRadius: 8, backgroundColor: "#fef2f2",
+    justifyContent: "center", alignItems: "center",
+  },
+  addNewGadgetText: { fontSize: 12, fontWeight: "600", color: RED },
+  addNewGadgetSub: { fontSize: 10, color: "#9ca3af", marginTop: 1 },
+  newGadgetForm: {
+    marginTop: 8, borderWidth: 1, borderColor: "#fecaca",
+    backgroundColor: "#fff5f5", borderRadius: 12, padding: 12, gap: 8,
+  },
+  newGadgetTitle: { fontSize: 12, fontWeight: "700", color: RED, letterSpacing: 0.4 },
+  newGadgetInput: {
+    borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10,
+    padding: 10, fontSize: 13, color: "#111", backgroundColor: "#fff",
+  },
+  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  categoryBtn: {
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb",
+  },
+  categoryBtnActive: { backgroundColor: RED, borderColor: RED },
+  categoryBtnText: { fontSize: 11, color: "#6b7280", fontWeight: "500" },
+  categoryBtnTextActive: { color: "#fff" },
+  newGadgetActions: { flexDirection: "row", gap: 8, marginTop: 4 },
+  cancelBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb",
+    alignItems: "center",
+  },
+  cancelBtnText: { fontSize: 13, color: "#6b7280", fontWeight: "600" },
+  saveGadgetBtn: {
+    flex: 1, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: RED, alignItems: "center", justifyContent: "center",
+  },
+  saveGadgetBtnText: { fontSize: 13, color: "#fff", fontWeight: "700" },
 
   // extra
   extraRow: { flexDirection: "row", gap: 8 },

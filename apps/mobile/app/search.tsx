@@ -87,7 +87,7 @@ export default function SearchScreen() {
   const currentCount = tab === "posts" ? posts.length : tab === "users" ? users.length : gadgets.length;
 
   const renderUser = ({ item }: { item: User }) => (
-    <TouchableOpacity style={styles.userCard} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.userCard} activeOpacity={0.8} onPress={() => router.push(`/profile/${item.username}` as any)}>
       <View style={styles.userAvatar}>
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.userAvatarImg} />

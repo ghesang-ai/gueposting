@@ -12,9 +12,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Camera } from "lucide-react-native";
+import { ArrowLeft, Camera, Link2, MapPin } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { api } from "../../src/lib/api";
+
+const SOCIAL_PLATFORMS = [
+  { key: "instagram", label: "Instagram", emoji: "📸", placeholder: "username" },
+  { key: "youtube",   label: "YouTube",   emoji: "▶️", placeholder: "channel name" },
+  { key: "tiktok",    label: "TikTok",    emoji: "🎵", placeholder: "@username" },
+  { key: "twitter",   label: "X (Twitter)", emoji: "𝕏", placeholder: "@username" },
+] as const;
+type SocialKey = typeof SOCIAL_PLATFORMS[number]["key"];
 
 const RED = "#d42b2b";
 
@@ -39,6 +47,11 @@ export default function EditProfileScreen() {
   const [website, setWebsite] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [socialLinks, setSocialLinks] = useState<Record<SocialKey, string>>({
+    instagram: "", youtube: "", tiktok: "", twitter: "",
+  });
+  const [showOnline, setShowOnline] = useState(true);
+  const [allowMessages, setAllowMessages] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -221,6 +234,49 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
+        {/* Preferensi */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeader}>PREFERENSI</Text>
+          <ToggleRow
+            label="Tampilkan status online"
+            sub="Orang lain dapat melihat saat kamu online"
+            value={showOnline}
+            onChange={setShowOnline}
+          />
+          <View style={styles.divider} />
+          <ToggleRow
+            label="Izinkan pesan dari semua orang"
+            sub="Semua orang bisa mengirimiku pesan"
+            value={allowMessages}
+            onChange={setAllowMessages}
+          />
+        </View>
+
+        {/* Tautan Sosial */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeader}>TAUTAN SOSIAL</Text>
+          {SOCIAL_PLATFORMS.map((s, i) => (
+            <View key={s.key}>
+              {i > 0 && <View style={styles.divider} />}
+              <View style={styles.socialRow}>
+                <Text style={styles.socialEmoji}>{s.emoji}</Text>
+                <View style={styles.socialInfo}>
+                  <Text style={styles.socialLabel}>{s.label}</Text>
+                  <TextInput
+                    style={styles.socialInput}
+                    value={socialLinks[s.key]}
+                    onChangeText={v => setSocialLinks(prev => ({ ...prev, [s.key]: v }))}
+                    placeholder={s.placeholder}
+                    placeholderTextColor="#d1d5db"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+
         {/* Bottom Save Button */}
         <TouchableOpacity
           style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -322,5 +378,63 @@ const styles = StyleSheet.create({
   saveButtonDisabled: { opacity: 0.6 },
   saveButtonText: { color: "white", fontSize: 15, fontWeight: "700" },
 
+  // Section card
+  sectionCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: RED,
+    letterSpacing: 0.6,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  divider: { height: 1, backgroundColor: "#f3f4f6", marginHorizontal: 16 },
+
+  // Toggle row
+  toggleRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
+  toggleInfo: { flex: 1 },
+  toggleLabel: { fontSize: 14, fontWeight: "600", color: "#111" },
+  toggleSub: { fontSize: 12, color: "#9ca3af", marginTop: 1 },
+  toggle: { width: 44, height: 24, borderRadius: 12, backgroundColor: "#e5e7eb", padding: 2, justifyContent: "center" },
+  toggleOn: { backgroundColor: RED },
+  toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.15, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2 },
+  toggleThumbOn: { alignSelf: "flex-end" },
+
+  // Social links
+  socialRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
+  socialEmoji: { fontSize: 22, width: 32, textAlign: "center" },
+  socialInfo: { flex: 1 },
+  socialLabel: { fontSize: 13, fontWeight: "600", color: "#374151" },
+  socialInput: { fontSize: 13, color: RED, marginTop: 2, fontWeight: "500" },
+
   scroll: { paddingBottom: 40 },
 });
+
+function ToggleRow({
+  label, sub, value, onChange,
+}: {
+  label: string; sub: string; value: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.toggleRow} onPress={() => onChange(!value)} activeOpacity={0.7}>
+      <View style={styles.toggleInfo}>
+        <Text style={styles.toggleLabel}>{label}</Text>
+        <Text style={styles.toggleSub}>{sub}</Text>
+      </View>
+      <View style={[styles.toggle, value && styles.toggleOn]}>
+        <View style={[styles.toggleThumb, value && styles.toggleThumbOn]} />
+      </View>
+    </TouchableOpacity>
+  );
+}
