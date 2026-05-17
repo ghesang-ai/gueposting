@@ -238,10 +238,12 @@ export default function EditProfilePage() {
           )}
           <label
             htmlFor="cover-upload"
+            style={{ touchAction: "auto" }}
             className={cn(
-              "absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 cursor-pointer select-none",
+              "absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 cursor-pointer select-none z-10",
               uploading === "cover" && "opacity-70 pointer-events-none"
             )}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             {uploading === "cover"
               ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
@@ -249,14 +251,14 @@ export default function EditProfilePage() {
             }
             Ubah Cover
           </label>
-          <input
-            id="cover-upload"
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], "cover")}
-          />
         </div>
+        <input
+          id="cover-upload"
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], "cover")}
+        />
 
         {/* Avatar overlapping */}
         <div className="absolute left-4 -bottom-10">
