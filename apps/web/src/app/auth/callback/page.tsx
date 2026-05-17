@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth";
 import { api } from "@/lib/api";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -16,7 +16,6 @@ export default function AuthCallbackPage() {
 
     (async () => {
       try {
-        // Store token first so api interceptor can use it
         localStorage.setItem("token", token);
         const res = await api.get("/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
@@ -33,8 +32,20 @@ export default function AuthCallbackPage() {
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="flex flex-col items-center gap-4">
         <div className="w-10 h-10 border-4 border-[#d42b2b] border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-500">Menghubungkan akun Google...</p>
+        <p className="text-sm text-gray-500">Menghubungkan akun...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="w-10 h-10 border-4 border-[#d42b2b] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
