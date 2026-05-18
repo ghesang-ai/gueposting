@@ -54,7 +54,9 @@ export class ModerationService {
         messages: [{ role: 'user', content: content.slice(0, 1000) }],
       });
 
-      const text = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
+      const raw = msg.content[0].type === 'text' ? msg.content[0].text.trim() : '';
+      // Strip markdown code fences if model wraps response in ```json ... ```
+      const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
       const result: ModerationResult = JSON.parse(text);
       return result;
     } catch (err) {
