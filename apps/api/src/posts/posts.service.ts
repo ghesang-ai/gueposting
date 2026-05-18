@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ModerationService } from '../moderation/moderation.service';
 import { CreatePostDto } from './dto/create-post.dto';
 
 const POLL_INCLUDE = {
@@ -9,12 +10,19 @@ const POLL_INCLUDE = {
 
 @Injectable()
 export class PostsService {
-  constructor(private prisma: PrismaService, private notifs: NotificationsService) {}
+  constructor(private prisma: PrismaService, private notifs: NotificationsService, private moderation: ModerationService) {}
 
   async create(userId: string, dto: CreatePostDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { status: true } });
     if (!user || user.status !== 'active') {
       throw new ForbiddenException('Akun kamu sedang menunggu persetujuan admin. Kamu belum bisa membuat postingan.');
+    }
+
+    if (dto.content?.trim()) {
+      const mod = await this.moderation.check(dto.content);
+      if (!mod.safe) {
+        throw new BadRequestException(mod.reason ?? 'Konten melanggar aturan komunitas GUEPOSTING');
+      }
     }
 
     const post = await this.prisma.post.create({
@@ -245,6 +253,13 @@ export class PostsService {
   }
 
   async addComment(userId: string, postId: string, content: string) {
+    if (content?.trim()) {
+      const mod = await this.moderation.check(content);
+      if (!mod.safe) {
+        throw new BadRequestException(mod.reason ?? 'Komentar melanggar aturan komunitas GUEPOSTING');
+      }
+    }
+
     const [comment, post] = await this.prisma.$transaction([
       this.prisma.comment.create({
         data: { userId, postId, content },

@@ -154,8 +154,10 @@ function NewPostPageInner() {
         }),
       });
       router.push("/feed");
-    } catch { alert("Gagal membuat post. Coba lagi."); }
-    finally { setSubmitting(false); }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      alert(msg ?? "Gagal membuat post. Coba lagi.");
+    } finally { setSubmitting(false); }
   };
 
   const placeholders: Record<string, string> = {
