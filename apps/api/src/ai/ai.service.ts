@@ -155,13 +155,12 @@ Berikan analisis dalam format JSON berikut (semua nilai score adalah angka 0-10)
       .filter(w => w.length > 2);
 
     const gadgets = await this.prisma.gadget.findMany({
-      where: {
+      where: keywords.length > 0 ? {
         OR: keywords.flatMap(k => [
           { name: { contains: k, mode: 'insensitive' as const } },
           { brand: { contains: k, mode: 'insensitive' as const } },
-          { category: { contains: k, mode: 'insensitive' as const } },
         ]),
-      },
+      } : undefined,
       take: 6,
       orderBy: { avgScore: 'desc' },
     });
