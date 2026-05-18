@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatDistance } from "@/lib/time";
+import { useAuthStore } from "@/stores/auth";
 
 const REACTIONS = [
   { type: "love",    emoji: "❤️",  label: "Love" },
@@ -228,7 +229,10 @@ function daysLeft(endsAt: string) {
   return `${hours} jam`;
 }
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({ post, onDelete }: { post: Post; onDelete?: () => void }) {
+  const { user: currentUser } = useAuthStore();
+  const isOwner = currentUser?.id === post.user.id;
+
   const [userReaction, setUserReaction] = useState<string | null>(post.userReaction ?? null);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [bookmarked, setBookmarked] = useState(post.isBookmarked ?? false);
@@ -280,6 +284,17 @@ export function PostCard({ post }: { post: Post }) {
       URL.revokeObjectURL(a.href);
     } catch {
       window.open(url, "_blank");
+    }
+  };
+
+  const deletePost = async () => {
+    setShowMenu(false);
+    if (!confirm("Hapus postingan ini? Tindakan tidak bisa dibatalkan.")) return;
+    try {
+      await api.delete(`/posts/${post.id}`);
+      onDelete?.();
+    } catch {
+      alert("Gagal menghapus post. Coba lagi.");
     }
   };
 
@@ -402,6 +417,18 @@ export function PostCard({ post }: { post: Post }) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 Salin Link Post
               </button>
+              {isOwner && (
+                <>
+                  <div className="h-px bg-gray-100 mx-3" />
+                  <button
+                    onClick={deletePost}
+                    className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-[#d42b2b] hover:bg-red-50 active:bg-red-100"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    Hapus
+                  </button>
+                </>
+              )}
               <div className="h-px bg-gray-100 mx-3" />
               <button
                 onClick={() => setShowMenu(false)}

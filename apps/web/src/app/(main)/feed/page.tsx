@@ -204,7 +204,13 @@ export default function FeedPage() {
             )}
           </div>
         ) : (
-          posts.map((post) => <PostCard key={post.id} post={post} />)
+          posts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              onDelete={() => setPosts((prev) => prev.filter((p) => p.id !== post.id))}
+            />
+          ))
         )}
 
         {hasMore && posts.length > 0 && (
