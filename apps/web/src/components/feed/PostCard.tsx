@@ -72,7 +72,7 @@ interface Post {
   } | null;
 }
 
-function MediaCarousel({ urls }: { urls: string[] }) {
+function MediaCarousel({ urls, onIndexChange }: { urls: string[]; onIndexChange?: (i: number) => void }) {
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +83,7 @@ function MediaCarousel({ urls }: { urls: string[] }) {
     if (!el) return;
     const i = Math.round(el.scrollLeft / el.clientWidth);
     setIndex(i);
+    onIndexChange?.(i);
   };
 
   const goTo = (i: number) => {
@@ -232,7 +233,9 @@ export function PostCard({ post }: { post: Post }) {
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [bookmarked, setBookmarked] = useState(post.isBookmarked ?? false);
   const [showPicker, setShowPicker] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -243,6 +246,7 @@ export function PostCard({ post }: { post: Post }) {
   const commentInputRef = useRef<HTMLInputElement>(null);
 
   const pickerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!showPicker) return;
@@ -252,6 +256,41 @@ export function PostCard({ post }: { post: Post }) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showPicker]);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenu]);
+
+  const downloadImage = async () => {
+    setShowMenu(false);
+    const url = post.mediaUrls[activeMediaIndex];
+    if (!url) return;
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `gueposting-${post.id}-${activeMediaIndex + 1}.jpg`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(url, "_blank");
+    }
+  };
+
+  const copyPostLink = () => {
+    setShowMenu(false);
+    const url = `${window.location.origin}/post/${post.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const react = async (type: string) => {
     setShowPicker(false);
@@ -334,9 +373,46 @@ export function PostCard({ post }: { post: Post }) {
             <p className="text-xs text-gray-400 mt-0.5">@{post.user.username} · {formatDistance(post.createdAt)}</p>
           </div>
         </Link>
-        <button className="text-gray-400 hover:text-gray-600 p-1">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu((v) => !v)}
+            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-8 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-30 min-w-[180px]">
+              {post.mediaUrls.length > 0 && (
+                <button
+                  onClick={downloadImage}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download Gambar
+                  {post.mediaUrls.length > 1 && (
+                    <span className="ml-auto text-xs text-gray-400">{activeMediaIndex + 1}/{post.mediaUrls.length}</span>
+                  )}
+                </button>
+              )}
+              <div className="h-px bg-gray-100 mx-3" />
+              <button
+                onClick={copyPostLink}
+                className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Salin Link Post
+              </button>
+              <div className="h-px bg-gray-100 mx-3" />
+              <button
+                onClick={() => setShowMenu(false)}
+                className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-[#d42b2b] hover:bg-red-50 active:bg-red-100"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                Laporkan
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Gadget tag */}
@@ -362,7 +438,7 @@ export function PostCard({ post }: { post: Post }) {
 
       {/* Media carousel */}
       {post.mediaUrls.length > 0 && (
-        <MediaCarousel urls={post.mediaUrls} />
+        <MediaCarousel urls={post.mediaUrls} onIndexChange={setActiveMediaIndex} />
       )}
 
       {/* Action bar */}
