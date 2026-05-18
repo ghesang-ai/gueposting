@@ -93,7 +93,7 @@ function MediaCarousel({ urls }: { urls: string[] }) {
 
   if (urls.length === 1) {
     return (
-      <div className="relative rounded-xl overflow-hidden bg-black">
+      <div className="relative rounded-2xl overflow-hidden bg-black">
         <div className="relative aspect-square w-full">
           {isVideo(urls[0]) ? (
             <video src={urls[0]} controls className="w-full h-full object-contain" />
@@ -106,7 +106,7 @@ function MediaCarousel({ urls }: { urls: string[] }) {
   }
 
   return (
-    <div className="relative rounded-xl overflow-hidden bg-black">
+    <div className="relative rounded-2xl overflow-hidden bg-black">
       {/* Scrollable track — CSS snap like Threads */}
       <div
         ref={scrollRef}
