@@ -58,6 +58,8 @@ interface Post {
   userReaction?: string | null;
   isBookmarked?: boolean;
   poll?: Poll | null;
+  location?: string | null;
+  taggedUserIds?: string[];
   user: {
     id: string;
     username: string;
@@ -459,6 +461,17 @@ export function PostCard({ post, onDelete }: { post: Post; onDelete?: () => void
       )}
 
       <p className="text-sm leading-relaxed">{post.content}</p>
+
+      {/* Location & tagged users */}
+      {(post.location || (post.taggedUserIds && post.taggedUserIds.length > 0)) && (
+        <div className="flex flex-wrap gap-2">
+          {post.location && (
+            <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 rounded-full px-2.5 py-1">
+              <span>📍</span>{post.location}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Poll */}
       {post.poll && <PollCard poll={post.poll} postId={post.id} />}

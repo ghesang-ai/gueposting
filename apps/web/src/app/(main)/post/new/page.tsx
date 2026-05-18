@@ -50,6 +50,19 @@ function NewPostPageInner() {
   const [allowComments, setAllowComments] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Location
+  const [location, setLocation] = useState("");
+  const [loadingLocation, setLoadingLocation] = useState(false);
+
+  // Tag Teman
+  const [taggedUsers, setTaggedUsers] = useState<{ id: string; displayName: string; username: string }[]>([]);
+  const [showTagSearch, setShowTagSearch] = useState(false);
+  const [tagSearch, setTagSearch] = useState("");
+  const [tagResults, setTagResults] = useState<{ id: string; displayName: string; username: string; avatarUrl: string | null }[]>([]);
+
+  // Jadwalkan
+  const [scheduledAt, setScheduledAt] = useState("");
+
   // Poll state — auto-aktif jika dari query ?poll=1
   const [showPoll, setShowPoll] = useState(() => false);
   const [pollQuestion, setPollQuestion] = useState("");
@@ -98,6 +111,41 @@ function NewPostPageInner() {
     return () => clearTimeout(t);
   }, [gadgetSearch]);
 
+  const fetchLocation = () => {
+    if (!navigator.geolocation) { alert("Browser tidak mendukung lokasi."); return; }
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+            { headers: { "Accept-Language": "id" } }
+          );
+          const data = await res.json();
+          const addr = data.address;
+          const place = addr.city || addr.town || addr.village || addr.county || addr.state || "Lokasi tidak diketahui";
+          setLocation(`${place}, ${addr.country ?? "Indonesia"}`);
+        } catch {
+          setLocation("Lokasi tidak tersedia");
+        } finally {
+          setLoadingLocation(false);
+        }
+      },
+      () => { setLoadingLocation(false); alert("Izin lokasi ditolak."); }
+    );
+  };
+
+  useEffect(() => {
+    if (!tagSearch.trim()) { setTagResults([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await api.get(`/users?search=${encodeURIComponent(tagSearch)}&limit=5`);
+        setTagResults(res.data.data ?? res.data);
+      } catch { setTagResults([]); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [tagSearch]);
+
   const saveNewGadget = async () => {
     if (!newGadgetName.trim() || !newGadgetBrand.trim()) return;
     setSavingGadget(true);
@@ -145,6 +193,9 @@ function NewPostPageInner() {
         gadgetId: selectedGadget?.id,
         rating: postType === "review" ? ratingValue || undefined : undefined,
         mediaUrls,
+        ...(location && { location }),
+        ...(taggedUsers.length > 0 && { taggedUserIds: taggedUsers.map((u) => u.id) }),
+        ...(scheduledAt && { scheduledAt: new Date(scheduledAt).toISOString() }),
         ...(showPoll && {
           poll: {
             question: pollQuestion.trim(),
@@ -468,16 +519,41 @@ function NewPostPageInner() {
                 <span className="text-xl">📊</span>
                 <span className="text-[9px] font-medium">Polling</span>
               </button>
-              {[
-                { emoji: "📍", label: "Lokasi" },
-                { emoji: "👥", label: "Tag Teman" },
-                { emoji: "🕐", label: "Jadwalkan" },
-              ].map(({ emoji, label }) => (
-                <button key={label} className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors">
-                  <span className="text-xl">{emoji}</span>
-                  <span className="text-[9px] font-medium">{label}</span>
-                </button>
-              ))}
+              {/* Lokasi */}
+              <button
+                onClick={location ? () => setLocation("") : fetchLocation}
+                disabled={loadingLocation}
+                className={cn("flex flex-col items-center gap-1 transition-colors", location ? "text-[#d42b2b]" : "text-gray-400 hover:text-gray-600")}
+              >
+                {loadingLocation ? <Loader2 size={20} className="animate-spin" /> : <span className="text-xl">📍</span>}
+                <span className="text-[9px] font-medium">Lokasi</span>
+              </button>
+
+              {/* Tag Teman */}
+              <button
+                onClick={() => setShowTagSearch((p) => !p)}
+                className={cn("flex flex-col items-center gap-1 transition-colors", taggedUsers.length > 0 ? "text-[#d42b2b]" : "text-gray-400 hover:text-gray-600")}
+              >
+                <span className="text-xl">👥</span>
+                <span className="text-[9px] font-medium">Tag Teman</span>
+              </button>
+
+              {/* Jadwalkan */}
+              <button
+                onClick={() => { const el = document.getElementById("schedule-input"); el?.showPicker?.(); el?.focus(); }}
+                className={cn("flex flex-col items-center gap-1 transition-colors relative", scheduledAt ? "text-[#d42b2b]" : "text-gray-400 hover:text-gray-600")}
+              >
+                <span className="text-xl">🕐</span>
+                <span className="text-[9px] font-medium">Jadwalkan</span>
+                <input
+                  id="schedule-input"
+                  type="datetime-local"
+                  value={scheduledAt}
+                  min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+              </button>
             </div>
             <div className="flex flex-col items-end gap-1">
               <span className="text-xs font-semibold text-gray-700">Izinkan komentar</span>
@@ -487,6 +563,69 @@ function NewPostPageInner() {
               </button>
             </div>
           </div>
+
+          {/* Status chips: lokasi, tagged users, scheduled */}
+          {(location || taggedUsers.length > 0 || scheduledAt) && (
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-100">
+              {location && (
+                <div className="flex items-center gap-1.5 bg-red-50 border border-red-100 rounded-full px-3 py-1">
+                  <span className="text-xs">📍</span>
+                  <span className="text-xs font-medium text-[#d42b2b] max-w-[140px] truncate">{location}</span>
+                  <button onClick={() => setLocation("")} className="text-gray-400 hover:text-gray-600 ml-0.5"><X size={11} /></button>
+                </div>
+              )}
+              {taggedUsers.map((u) => (
+                <div key={u.id} className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-full px-3 py-1">
+                  <span className="text-xs">👤</span>
+                  <span className="text-xs font-medium text-blue-600">@{u.username}</span>
+                  <button onClick={() => setTaggedUsers((p) => p.filter((x) => x.id !== u.id))} className="text-gray-400 hover:text-gray-600 ml-0.5"><X size={11} /></button>
+                </div>
+              ))}
+              {scheduledAt && (
+                <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 rounded-full px-3 py-1">
+                  <span className="text-xs">🕐</span>
+                  <span className="text-xs font-medium text-amber-600">
+                    {new Date(scheduledAt).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <button onClick={() => setScheduledAt("")} className="text-gray-400 hover:text-gray-600 ml-0.5"><X size={11} /></button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tag Teman search */}
+          {showTagSearch && (
+            <div className="border-t border-gray-100 pt-3 space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tag Teman</p>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={tagSearch}
+                  onChange={(e) => setTagSearch(e.target.value)}
+                  placeholder="Cari nama atau username..."
+                  className="w-full pl-8 pr-4 py-2 text-sm bg-gray-50 rounded-xl border border-gray-100 focus:border-gray-300 outline-none"
+                />
+              </div>
+              {tagResults.length > 0 && (
+                <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                  {tagResults.filter((u) => !taggedUsers.find((t) => t.id === u.id)).map((u) => (
+                    <button key={u.id} type="button"
+                      onClick={() => { setTaggedUsers((p) => [...p, u]); setTagSearch(""); setTagResults([]); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0">
+                      <div className="w-7 h-7 rounded-full bg-[#d42b2b] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {u.displayName[0]}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold">{u.displayName}</p>
+                        <p className="text-[10px] text-gray-400">@{u.username}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Poll builder — expands inline */}
           {showPoll && (

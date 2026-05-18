@@ -9,6 +9,256 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model User {
+  id                 String            @id @default(uuid())
+  username           String            @unique @db.VarChar(30)
+  displayName        String            @db.VarChar(60)
+  email              String            @unique @db.VarChar(255)
+  passwordHash       String?
+  avatarUrl          String?
+  bio                String?
+  trustScore         Float             @default(0)
+  role               UserRole          @default(user)
+  fcmToken           String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  phone              String?           @db.VarChar(20)
+  currentGadgetId    String?
+  status             UserStatus        @default(pending)
+  coverUrl           String?
+  location           String?           @db.VarChar(100)
+  website            String?           @db.VarChar(200)
+  coverPositionY     Float             @default(50)
+  avatarPositionX    Float             @default(50)
+  avatarPositionY    Float             @default(50)
+  comparisons        AiComparison[]
+  bookmarks          Bookmark[]
+  comments           Comment[]
+  communities        CommunityMember[]
+  following          Follow[]          @relation("Follower")
+  followers          Follow[]          @relation("Following")
+  invitesCreated     Invite[]          @relation("InviteCreator")
+  inviteUsed         Invite?           @relation("InviteUser")
+  likes              Like[]
+  actedNotifications Notification[]    @relation("NotifActor")
+  notifications      Notification[]    @relation("NotifRecipient")
+  pollVotes          PollVote[]
+  posts              Post[]
+  ownedGadgets       UserGadget[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model Gadget {
+  id            String         @id @default(uuid())
+  name          String         @db.VarChar(100)
+  brand         String         @db.VarChar(50)
+  category      GadgetCategory
+  specs         Json           @default("{}")
+  avgScore      Float          @default(0)
+  imageUrl      String?
+  reviewCount   Int            @default(0)
+  createdAt     DateTime       @default(now())
+  isTrending    Boolean        @default(false)
+  trendingOrder Int?
+  communities   Community[]
+  posts         Post[]
+  userGadgets   UserGadget[]
+
+  @@unique([name, brand])
+  @@index([brand])
+  @@index([category])
+}
+
+model UserGadget {
+  userId   String
+  gadgetId String
+  gadget   Gadget @relation(fields: [gadgetId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, gadgetId])
+}
+
+model Post {
+  id             String         @id @default(uuid())
+  userId         String
+  gadgetId       String?
+  content        String
+  type           PostType
+  rating         Int?
+  mediaUrls      String[]       @default([])
+  likeCount      Int            @default(0)
+  commentCount   Int            @default(0)
+  location       String?        @db.VarChar(200)
+  taggedUserIds  String[]       @default([])
+  scheduledAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  bookmarks      Bookmark[]
+  comments       Comment[]
+  likes          Like[]
+  notifications  Notification[]
+  poll           Poll?
+  gadget         Gadget?        @relation(fields: [gadgetId], references: [id])
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([gadgetId])
+  @@index([createdAt(sort: Desc)])
+  @@index([scheduledAt])
+}
+
+model Poll {
+  id        String       @id @default(uuid())
+  postId    String       @unique
+  question  String
+  endsAt    DateTime
+  createdAt DateTime     @default(now())
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options   PollOption[]
+  votes     PollVote[]
+}
+
+model PollOption {
+  id        String     @id @default(uuid())
+  pollId    String
+  text      String
+  voteCount Int        @default(0)
+  position  Int
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes     PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String     @id @default(uuid())
+  userId    String
+  pollId    String
+  optionId  String
+  createdAt DateTime   @default(now())
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pollId])
+  @@index([pollId])
+}
+
+model Like {
+  userId       String
+  postId       String
+  createdAt    DateTime @default(now())
+  reactionType String   @default("love")
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+}
+
+model Bookmark {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  userId    String
+  postId    String
+  content   String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+}
+
+model Community {
+  id          String            @id @default(uuid())
+  name        String            @db.VarChar(100)
+  slug        String            @unique @db.VarChar(100)
+  description String?
+  gadgetId    String?
+  memberCount Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  gadget      Gadget?           @relation(fields: [gadgetId], references: [id])
+  members     CommunityMember[]
+}
+
+model CommunityMember {
+  userId      String
+  communityId String
+  joinedAt    DateTime  @default(now())
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, communityId])
+}
+
+model Invite {
+  id          String    @id @default(uuid())
+  code        String    @unique @db.VarChar(20)
+  createdById String
+  usedById    String?   @unique
+  usedAt      DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  createdBy   User      @relation("InviteCreator", fields: [createdById], references: [id])
+  usedBy      User?     @relation("InviteUser", fields: [usedById], references: [id])
+
+  @@index([code])
+}
+
+model AiComparison {
+  id             String        @id @default(uuid())
+  userId         String
+  gadgetIds      String[]
+  scores         Json          @default("{}")
+  summary        String?
+  recommendation String?
+  userBudget     Int?
+  userUsecase    String?
+  status         CompareStatus @default(pending)
+  createdAt      DateTime      @default(now())
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  actorId   String
+  type      NotificationType
+  postId    String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  actor     User             @relation("NotifActor", fields: [actorId], references: [id], onDelete: Cascade)
+  post      Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User             @relation("NotifRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt(sort: Desc)])
+}
+
 enum UserRole {
   user
   admin
@@ -46,265 +296,4 @@ enum CompareStatus {
   processing
   done
   failed
-}
-
-model User {
-  id           String   @id @default(uuid())
-  username     String   @unique @db.VarChar(30)
-  displayName  String   @db.VarChar(60)
-  email        String   @unique @db.VarChar(255)
-  phone        String?  @db.VarChar(20)
-  passwordHash String?
-  avatarUrl    String?
-  coverUrl       String?
-  coverPositionY Float    @default(50)
-  avatarPositionX Float   @default(50)
-  avatarPositionY Float   @default(50)
-  bio          String?
-  location     String?  @db.VarChar(100)
-  website      String?  @db.VarChar(200)
-  trustScore   Float    @default(0)
-  role         UserRole   @default(user)
-  status       UserStatus @default(pending)
-  currentGadgetId String?
-  fcmToken     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  posts          Post[]
-  likes          Like[]
-  comments       Comment[]
-  followers      Follow[]          @relation("Following")
-  following      Follow[]          @relation("Follower")
-  communities    CommunityMember[]
-  comparisons    AiComparison[]
-  invitesCreated Invite[]          @relation("InviteCreator")
-  inviteUsed     Invite?           @relation("InviteUser")
-  ownedGadgets       UserGadget[]
-  bookmarks          Bookmark[]
-  notifications      Notification[] @relation("NotifRecipient")
-  actedNotifications Notification[] @relation("NotifActor")
-  pollVotes          PollVote[]
-
-  @@index([email])
-  @@index([username])
-}
-
-model Gadget {
-  id          String         @id @default(uuid())
-  name        String         @db.VarChar(100)
-  brand       String         @db.VarChar(50)
-  category    GadgetCategory
-  specs       Json           @default("{}")
-  avgScore    Float          @default(0)
-  imageUrl    String?
-  reviewCount Int            @default(0)
-  isTrending  Boolean        @default(false)
-  trendingOrder Int?
-  createdAt   DateTime       @default(now())
-
-  posts       Post[]
-  communities Community[]
-  userGadgets UserGadget[]
-
-  @@unique([name, brand])
-  @@index([brand])
-  @@index([category])
-}
-
-model UserGadget {
-  userId   String
-  gadgetId String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gadget   Gadget @relation(fields: [gadgetId], references: [id], onDelete: Cascade)
-
-  @@id([userId, gadgetId])
-}
-
-model Post {
-  id           String   @id @default(uuid())
-  userId       String
-  gadgetId     String?
-  content      String
-  type         PostType
-  rating       Int?
-  mediaUrls    String[] @default([])
-  likeCount    Int      @default(0)
-  commentCount Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gadget    Gadget?    @relation(fields: [gadgetId], references: [id])
-  likes         Like[]
-  comments      Comment[]
-  bookmarks     Bookmark[]
-  notifications Notification[]
-  poll          Poll?
-
-  @@index([userId])
-  @@index([gadgetId])
-  @@index([createdAt(sort: Desc)])
-}
-
-model Poll {
-  id        String   @id @default(uuid())
-  postId    String   @unique
-  question  String
-  endsAt    DateTime
-  createdAt DateTime @default(now())
-
-  post    Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  options PollOption[]
-  votes   PollVote[]
-}
-
-model PollOption {
-  id        String @id @default(uuid())
-  pollId    String
-  text      String
-  voteCount Int    @default(0)
-  position  Int
-
-  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  votes PollVote[]
-
-  @@index([pollId])
-}
-
-model PollVote {
-  id        String   @id @default(uuid())
-  userId    String
-  pollId    String
-  optionId  String
-  createdAt DateTime @default(now())
-
-  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, pollId])
-  @@index([pollId])
-}
-
-model Like {
-  userId       String
-  postId       String
-  reactionType String   @default("love")
-  createdAt    DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@id([userId, postId])
-}
-
-model Bookmark {
-  userId    String
-  postId    String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@id([userId, postId])
-}
-
-model Comment {
-  id        String   @id @default(uuid())
-  userId    String
-  postId    String
-  content   String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@index([postId])
-}
-
-model Follow {
-  followerId  String
-  followingId String
-  createdAt   DateTime @default(now())
-
-  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
-  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@id([followerId, followingId])
-}
-
-model Community {
-  id          String   @id @default(uuid())
-  name        String   @db.VarChar(100)
-  slug        String   @unique @db.VarChar(100)
-  description String?
-  gadgetId    String?
-  memberCount Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  gadget  Gadget?           @relation(fields: [gadgetId], references: [id])
-  members CommunityMember[]
-}
-
-model CommunityMember {
-  userId      String
-  communityId String
-  joinedAt    DateTime @default(now())
-
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-
-  @@id([userId, communityId])
-}
-
-model Invite {
-  id          String    @id @default(uuid())
-  code        String    @unique @db.VarChar(20)
-  createdById String
-  usedById    String?   @unique
-  usedAt      DateTime?
-  expiresAt   DateTime
-  createdAt   DateTime  @default(now())
-
-  createdBy User  @relation("InviteCreator", fields: [createdById], references: [id])
-  usedBy    User? @relation("InviteUser", fields: [usedById], references: [id])
-
-  @@index([code])
-}
-
-model AiComparison {
-  id             String        @id @default(uuid())
-  userId         String
-  gadgetIds      String[]
-  scores         Json          @default("{}")
-  summary        String?
-  recommendation String?
-  userBudget     Int?
-  userUsecase    String?
-  status         CompareStatus @default(pending)
-  createdAt      DateTime      @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-}
-
-model Notification {
-  id        String           @id @default(uuid())
-  userId    String
-  actorId   String
-  type      NotificationType
-  postId    String?
-  read      Boolean          @default(false)
-  createdAt DateTime         @default(now())
-
-  user  User  @relation("NotifRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  actor User  @relation("NotifActor", fields: [actorId], references: [id], onDelete: Cascade)
-  post  Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@index([userId, read])
-  @@index([createdAt(sort: Desc)])
 }

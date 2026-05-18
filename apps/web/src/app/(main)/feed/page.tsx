@@ -53,6 +53,8 @@ interface Post {
   gadget: { id: string; name: string; brand: string; imageUrl: string | null } | null;
   userReaction?: string | null;
   isBookmarked?: boolean;
+  location?: string | null;
+  taggedUserIds?: string[];
 }
 
 type Tab = "following" | "semua";

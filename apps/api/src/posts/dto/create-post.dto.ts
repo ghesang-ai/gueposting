@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsInt, Min, Max, IsArray, IsUUID, ValidateNested, ArrayMinSize, ArrayMaxSize } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsInt, Min, Max, IsArray, IsUUID, ValidateNested, ArrayMinSize, ArrayMaxSize, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PostType } from '@prisma/client';
 
@@ -44,4 +44,17 @@ export class CreatePostDto {
   @ValidateNested()
   @Type(() => CreatePollDto)
   poll?: CreatePollDto;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  taggedUserIds?: string[];
+
+  @IsOptional()
+  @IsDateString()
+  scheduledAt?: string;
 }

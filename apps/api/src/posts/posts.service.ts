@@ -33,6 +33,9 @@ export class PostsService {
         gadgetId: dto.gadgetId,
         rating: dto.rating,
         mediaUrls: dto.mediaUrls ?? [],
+        location: dto.location,
+        taggedUserIds: dto.taggedUserIds ?? [],
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
       },
       include: {
         user: { select: { id: true, username: true, displayName: true, avatarUrl: true, trustScore: true } },
@@ -60,10 +63,12 @@ export class PostsService {
 
   async findAll(page = 1, limit = 20, type?: string, search?: string) {
     const skip = (page - 1) * limit;
+    const now = new Date();
     return this.prisma.post.findMany({
       skip,
       take: limit,
       where: {
+        OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }],
         ...(type ? { type: type as any } : {}),
         ...(search ? { content: { contains: search, mode: 'insensitive' as const } } : {}),
       },
@@ -80,11 +85,13 @@ export class PostsService {
   async findTrending(userId: string, page = 1, limit = 20, type?: string) {
     const skip = (page - 1) * limit;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const now = new Date();
     const posts = await this.prisma.post.findMany({
       skip,
       take: limit,
       where: {
         createdAt: { gte: sevenDaysAgo },
+        OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }],
         ...(type ? { type: type as any } : {}),
       },
       include: {
@@ -117,12 +124,14 @@ export class PostsService {
     });
     const followingIds = following.map((f) => f.followingId);
 
+    const now = new Date();
     const posts = await this.prisma.post.findMany({
       where: {
         OR: [
           { userId: { in: followingIds } },
           { userId },
         ],
+        AND: [{ OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }] }],
       },
       include: {
         user: { select: { id: true, username: true, displayName: true, avatarUrl: true, trustScore: true } },
