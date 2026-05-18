@@ -30,6 +30,16 @@ export class SocialController {
     return this.socialService.getUserPosts(username, parseInt(limit));
   }
 
+  @Get('users/:username/followers')
+  getFollowers(@Param('username') username: string, @CurrentUser() user: JwtPayload) {
+    return this.socialService.getFollowers(username, user.sub);
+  }
+
+  @Get('users/:username/following')
+  getFollowing(@Param('username') username: string, @CurrentUser() user: JwtPayload) {
+    return this.socialService.getFollowing(username, user.sub);
+  }
+
   @Get('feed/trending')
   getTrending(@Query('limit') limit = '10') {
     return this.socialService.getTrending(parseInt(limit));

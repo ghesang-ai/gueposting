@@ -71,6 +71,83 @@ export class SocialService {
     });
   }
 
+  async getFollowers(username: string, viewerId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    const follows = await this.prisma.follow.findMany({
+      where: { followingId: user.id },
+      include: {
+        follower: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true, trustScore: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const followerIds = follows.map((f) => f.follower.id);
+
+    // Check which ones the viewer is already following
+    let viewerFollowing = new Set<string>();
+    if (viewerId) {
+      const vf = await this.prisma.follow.findMany({
+        where: { followerId: viewerId, followingId: { in: followerIds } },
+        select: { followingId: true },
+      });
+      viewerFollowing = new Set(vf.map((f) => f.followingId));
+    }
+
+    // Check which followers also follow the viewer (followsYou)
+    let followsViewer = new Set<string>();
+    if (viewerId) {
+      const fv = await this.prisma.follow.findMany({
+        where: { followerId: { in: followerIds }, followingId: viewerId },
+        select: { followerId: true },
+      });
+      followsViewer = new Set(fv.map((f) => f.followerId));
+    }
+
+    return follows.map((f) => ({
+      ...f.follower,
+      isFollowing: viewerFollowing.has(f.follower.id),
+      followsYou: followsViewer.has(f.follower.id),
+    }));
+  }
+
+  async getFollowing(username: string, viewerId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { username }, select: { id: true } });
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    const follows = await this.prisma.follow.findMany({
+      where: { followerId: user.id },
+      include: {
+        following: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true, bio: true, trustScore: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const followingIds = follows.map((f) => f.following.id);
+
+    let viewerFollowing = new Set<string>();
+    if (viewerId) {
+      const vf = await this.prisma.follow.findMany({
+        where: { followerId: viewerId, followingId: { in: followingIds } },
+        select: { followingId: true },
+      });
+      viewerFollowing = new Set(vf.map((f) => f.followingId));
+    }
+
+    return follows.map((f) => ({
+      ...f.following,
+      isFollowing: viewerFollowing.has(f.following.id),
+      followsYou: false,
+    }));
+  }
+
   async searchUsers(search: string, limit = 10) {
     return this.prisma.user.findMany({
       where: search ? {

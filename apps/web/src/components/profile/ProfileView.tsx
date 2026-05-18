@@ -335,11 +335,17 @@ export function ProfileView({ username, isOwn }: { username: string; isOwn: bool
 
         {/* Following / Followers — gaya X */}
         <div className="flex items-center gap-4 mt-3">
-          <button className="flex items-center gap-1 hover:underline">
+          <button
+            onClick={() => router.push(`/profile/${profile.username}/follow?tab=following`)}
+            className="flex items-center gap-1 hover:underline"
+          >
             <span className="text-sm font-bold text-gray-900">{formatNum(profile._count.following)}</span>
             <span className="text-sm text-gray-400">Mengikuti</span>
           </button>
-          <button className="flex items-center gap-1 hover:underline">
+          <button
+            onClick={() => router.push(`/profile/${profile.username}/follow?tab=followers`)}
+            className="flex items-center gap-1 hover:underline"
+          >
             <span className="text-sm font-bold text-gray-900">{formatNum(profile._count.followers)}</span>
             <span className="text-sm text-gray-400">Pengikut</span>
           </button>
