@@ -1,12 +1,34 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
-  View, Text, StyleSheet, Image, TouchableOpacity,
+  View, Text, StyleSheet, Image, TouchableOpacity, Alert,
+  ScrollView, Dimensions, NativeSyntheticEvent, NativeScrollEvent,
 } from "react-native";
-import { Heart, MessageCircle, Bookmark, Share2, Star } from "lucide-react-native";
+import { Heart, MessageCircle, Bookmark, Share2, Star, MapPin } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { api } from "../lib/api";
+import { useAuthStore } from "../stores/auth";
+
+const { width: SCREEN_W } = Dimensions.get("window");
+const IMG_W = SCREEN_W - 56; // 12+12 outer list padding + 16+16 card padding
 
 const RED = "#d42b2b";
+
+interface PollOption {
+  id: string;
+  text: string;
+  voteCount: number;
+}
+
+interface Poll {
+  id: string;
+  question: string;
+  options: PollOption[];
+  totalVotes: number;
+  userVote?: string | null;
+  userVotes?: string[];
+  multipleChoice?: boolean;
+  expiresAt?: string;
+}
 
 export interface Post {
   id: string;
@@ -17,8 +39,10 @@ export interface Post {
   likeCount: number;
   commentCount: number;
   createdAt: string;
+  location?: string | null;
   isLiked?: boolean;
   isBookmarked?: boolean;
+  poll?: Poll | null;
   user: { id: string; username: string; displayName: string; avatarUrl: string | null; trustScore: number };
   gadget: { id: string; name: string; brand: string; imageUrl: string | null } | null;
 }
@@ -31,20 +55,28 @@ export function timeAgo(dateStr: string) {
   return `${Math.floor(diff / 86400)} hari lalu`;
 }
 
-export default function PostCard({ post }: { post: Post }) {
+export default function PostCard({ post, onDelete }: { post: Post; onDelete?: () => void }) {
   const [liked, setLiked] = useState(post.isLiked ?? false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [bookmarked, setBookmarked] = useState(post.isBookmarked ?? false);
+  const [poll, setPoll] = useState<Poll | null>(post.poll ?? null);
+  const [selectedOptions, setSelectedOptions] = useState<Set<string>>(new Set());
+  const [voting, setVoting] = useState(false);
+  const [imgIndex, setImgIndex] = useState(0);
   const router = useRouter();
+  const { user } = useAuthStore();
+
+  const isOwner = user?.id === post.user.id;
+  const hasVoted = poll != null && (
+    poll.userVote != null || (poll.userVotes != null && poll.userVotes.length > 0)
+  );
 
   const toggleLike = async () => {
-    // optimistic update first
     setLiked(prev => !prev);
     setLikeCount(n => liked ? n - 1 : n + 1);
     try {
-      await api.post(`/posts/${post.id}/like`); // always POST, backend toggles
+      await api.post(`/posts/${post.id}/like`);
     } catch {
-      // revert on error
       setLiked(prev => !prev);
       setLikeCount(n => liked ? n + 1 : n - 1);
     }
@@ -53,16 +85,72 @@ export default function PostCard({ post }: { post: Post }) {
   const toggleBookmark = async () => {
     setBookmarked(prev => !prev);
     try {
-      await api.post(`/posts/${post.id}/bookmark`); // always POST, backend toggles
+      await api.post(`/posts/${post.id}/bookmark`);
     } catch {
       setBookmarked(prev => !prev);
+    }
+  };
+
+  const deletePost = () => {
+    Alert.alert("Hapus Postingan?", "Postingan ini akan dihapus permanen.", [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Hapus",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.delete(`/posts/${post.id}`);
+            onDelete?.();
+          } catch {
+            Alert.alert("Gagal", "Gagal menghapus postingan.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const showMoreMenu = () => {
+    Alert.alert("Opsi", undefined, [
+      { text: "Salin Link Post", onPress: () => {} },
+      { text: "Laporkan", onPress: () => {} },
+      ...(isOwner ? [{ text: "Hapus", style: "destructive" as const, onPress: deletePost }] : []),
+      { text: "Batal", style: "cancel" as const },
+    ]);
+  };
+
+  const toggleOption = (optionId: string) => {
+    if (!poll?.multipleChoice) {
+      setSelectedOptions(new Set([optionId]));
+    } else {
+      setSelectedOptions(prev => {
+        const next = new Set(prev);
+        if (next.has(optionId)) next.delete(optionId);
+        else next.add(optionId);
+        return next;
+      });
+    }
+  };
+
+  const submitVote = async () => {
+    if (!poll || selectedOptions.size === 0) return;
+    setVoting(true);
+    try {
+      const res = await api.post(`/posts/${post.id}/poll/vote`, {
+        optionIds: Array.from(selectedOptions),
+      });
+      setPoll(res.data);
+      setSelectedOptions(new Set());
+    } catch {
+      Alert.alert("Gagal", "Gagal memilih.");
+    } finally {
+      setVoting(false);
     }
   };
 
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.userRow}>
+        <TouchableOpacity style={styles.userRow} onPress={() => router.push(`/profile/${post.user.username}` as any)}>
           <View style={styles.avatar}>
             {post.user.avatarUrl
               ? <Image source={{ uri: post.user.avatarUrl }} style={styles.avatarImg} />
@@ -77,8 +165,8 @@ export default function PostCard({ post }: { post: Post }) {
             </View>
             <Text style={styles.username}>@{post.user.username} · {timeAgo(post.createdAt)}</Text>
           </View>
-        </View>
-        <TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={showMoreMenu}>
           <Text style={styles.moreBtn}>•••</Text>
         </TouchableOpacity>
       </View>
@@ -100,16 +188,100 @@ export default function PostCard({ post }: { post: Post }) {
 
       <Text style={styles.content}>{post.content}</Text>
 
+      {post.location ? (
+        <View style={styles.locationChip}>
+          <MapPin size={12} color="#6b7280" />
+          <Text style={styles.locationText}>{post.location}</Text>
+        </View>
+      ) : null}
+
       {post.mediaUrls.length > 0 && (
-        <View style={[styles.mediaGrid, post.mediaUrls.length > 1 && { flexDirection: "row", flexWrap: "wrap" }]}>
-          {post.mediaUrls.slice(0, 4).map((url, i) => (
-            <Image
-              key={i}
-              source={{ uri: url }}
-              style={[styles.mediaImg, post.mediaUrls.length > 1 && { width: "49.5%", aspectRatio: 1 }]}
-              resizeMode="cover"
-            />
-          ))}
+        <View style={styles.carouselWrap}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / IMG_W);
+              setImgIndex(idx);
+            }}
+            scrollEventThrottle={16}
+          >
+            {post.mediaUrls.slice(0, 4).map((url, i) => (
+              <Image
+                key={i}
+                source={{ uri: url }}
+                style={{ width: IMG_W, height: 220, borderRadius: 12 }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+          {post.mediaUrls.length > 1 && (
+            <View style={styles.dots}>
+              {post.mediaUrls.slice(0, 4).map((_, i) => (
+                <View key={i} style={[styles.dot, i === imgIndex && styles.dotActive]} />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Poll */}
+      {poll && (
+        <View style={styles.pollBox}>
+          <Text style={styles.pollQuestion}>{poll.question}</Text>
+          {poll.options.map(opt => {
+            const pct = poll.totalVotes > 0 ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
+            const isVoted = hasVoted && (poll.userVote === opt.id || poll.userVotes?.includes(opt.id));
+            const isSelected = selectedOptions.has(opt.id);
+
+            if (hasVoted) {
+              return (
+                <View key={opt.id} style={styles.pollResultRow}>
+                  <View style={[styles.pollBar, { width: `${pct}%` as any }]} />
+                  <View style={styles.pollResultInner}>
+                    <View style={[styles.pollCheckCircle, isVoted && styles.pollCheckCircleActive]}>
+                      {isVoted && <Text style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>✓</Text>}
+                    </View>
+                    <Text style={styles.pollOptText}>{opt.text}</Text>
+                    <Text style={styles.pollPct}>{pct}%</Text>
+                  </View>
+                </View>
+              );
+            }
+
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.pollOption, isSelected && styles.pollOptionSelected]}
+                onPress={() => toggleOption(opt.id)}
+              >
+                <View style={[
+                  poll.multipleChoice ? styles.checkbox : styles.radio,
+                  isSelected && styles.checkboxActive,
+                ]}>
+                  {isSelected && <Text style={{ color: "#fff", fontSize: 9 }}>✓</Text>}
+                </View>
+                <Text style={styles.pollOptText}>{opt.text}</Text>
+              </TouchableOpacity>
+            );
+          })}
+
+          {!hasVoted && selectedOptions.size > 0 && (
+            <TouchableOpacity
+              style={[styles.voteBtn, voting && { opacity: 0.6 }]}
+              onPress={submitVote}
+              disabled={voting}
+            >
+              <Text style={styles.voteBtnText}>
+                {voting ? "Memilih..." : poll.multipleChoice ? `Pilih (${selectedOptions.size})` : "Pilih"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <Text style={styles.pollMeta}>
+            {poll.totalVotes} suara · {poll.multipleChoice ? "Boleh pilih banyak" : "Satu pilihan"}
+          </Text>
         </View>
       )}
 
@@ -150,8 +322,57 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   ratingText: { fontSize: 11, fontWeight: "700", color: "#f59e0b" },
   content: { fontSize: 14, lineHeight: 22, color: "#111827", marginBottom: 10 },
-  mediaGrid: { borderRadius: 12, overflow: "hidden", marginBottom: 10, gap: 2 },
-  mediaImg: { width: "100%", height: 200, borderRadius: 12 },
+  locationChip: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8 },
+  locationText: { fontSize: 12, color: "#6b7280" },
+  carouselWrap: { marginBottom: 10 },
+  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 7 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#d1d5db" },
+  dotActive: { backgroundColor: RED, width: 16 },
+
+  // Poll
+  pollBox: { backgroundColor: "#f9fafb", borderRadius: 12, padding: 14, marginBottom: 10 },
+  pollQuestion: { fontSize: 14, fontWeight: "700", color: "#111827", marginBottom: 10 },
+  pollOption: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10,
+    backgroundColor: "#fff", marginBottom: 8,
+  },
+  pollOptionSelected: { borderColor: RED, backgroundColor: "#fff5f5" },
+  checkbox: {
+    width: 18, height: 18, borderRadius: 4,
+    borderWidth: 1.5, borderColor: "#d1d5db",
+    justifyContent: "center", alignItems: "center",
+  },
+  radio: {
+    width: 18, height: 18, borderRadius: 9,
+    borderWidth: 1.5, borderColor: "#d1d5db",
+    justifyContent: "center", alignItems: "center",
+  },
+  checkboxActive: { backgroundColor: RED, borderColor: RED },
+  pollOptText: { flex: 1, fontSize: 13, color: "#374151" },
+  pollResultRow: {
+    position: "relative", marginBottom: 8,
+    borderRadius: 10, overflow: "hidden",
+    backgroundColor: "#f3f4f6", height: 40,
+  },
+  pollBar: { position: "absolute", top: 0, left: 0, bottom: 0, backgroundColor: "#fecaca", borderRadius: 10 },
+  pollResultInner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, height: 40 },
+  pollCheckCircle: {
+    width: 16, height: 16, borderRadius: 8,
+    borderWidth: 1.5, borderColor: "#d1d5db",
+    justifyContent: "center", alignItems: "center",
+  },
+  pollCheckCircleActive: { backgroundColor: RED, borderColor: RED },
+  pollPct: { fontSize: 12, fontWeight: "700", color: "#374151" },
+  voteBtn: {
+    backgroundColor: RED, borderRadius: 10,
+    paddingVertical: 10, alignItems: "center",
+    marginTop: 4, marginBottom: 8,
+  },
+  voteBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  pollMeta: { fontSize: 11, color: "#9ca3af", textAlign: "center", marginTop: 2 },
+
   actions: { flexDirection: "row", alignItems: "center", gap: 20, borderTopWidth: 1, borderTopColor: "#f9fafb", paddingTop: 10 },
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 6 },
   actionText: { fontSize: 13, fontWeight: "500", color: "#9ca3af" },

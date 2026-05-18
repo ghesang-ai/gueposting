@@ -4,6 +4,13 @@ import { CompareRequestDto } from './dto/compare-request.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '@gueposting/types';
+import { IsString, MinLength } from 'class-validator';
+
+class AskDto {
+  @IsString()
+  @MinLength(3)
+  question: string;
+}
 
 @Controller('ai')
 @UseGuards(JwtGuard)
@@ -18,6 +25,11 @@ export class AiController {
   @Get('compare/:id')
   getComparison(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
     return this.aiService.getComparison(id, user.sub);
+  }
+
+  @Post('ask')
+  askAI(@Body() dto: AskDto) {
+    return this.aiService.askAI(dto.question);
   }
 
   @Get('gadgets/:gadgetId/sentiment')

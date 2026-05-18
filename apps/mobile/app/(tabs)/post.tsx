@@ -113,6 +113,19 @@ export default function PostScreen() {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollDuration, setPollDuration] = useState(3);
+  const [pollMultipleChoice, setPollMultipleChoice] = useState(false);
+
+  // extras
+  const [location, setLocation] = useState<string | null>(null);
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [locationDraft, setLocationDraft] = useState("");
+  const [taggedUsers, setTaggedUsers] = useState<{ id: string; username: string; displayName: string }[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [userResults, setUserResults] = useState<{ id: string; username: string; displayName: string }[]>([]);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
+  const [showScheduleInput, setShowScheduleInput] = useState(false);
+  const [scheduleDraft, setScheduleDraft] = useState("");
 
   // settings
   const [allowComments, setAllowComments] = useState(true);
@@ -128,6 +141,28 @@ export default function PostScreen() {
       .then((res) => setTrendingGadgets(res.data?.gadgets ?? []))
       .catch(() => {});
   }, []);
+
+  // user search for tag teman
+  const userSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleUserSearch = useCallback((text: string) => {
+    setUserSearch(text);
+    if (userSearchTimer.current) clearTimeout(userSearchTimer.current);
+    if (!text.trim()) { setUserResults([]); return; }
+    userSearchTimer.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/users?search=${encodeURIComponent(text)}&limit=5`);
+        setUserResults(res.data ?? []);
+      } catch { setUserResults([]); }
+    }, 300);
+  }, []);
+
+  const addTaggedUser = (u: { id: string; username: string; displayName: string }) => {
+    if (!taggedUsers.find(x => x.id === u.id)) {
+      setTaggedUsers(prev => [...prev, u]);
+    }
+    setUserSearch("");
+    setUserResults([]);
+  };
 
   // debounced gadget search
   const handleGadgetSearch = useCallback((text: string) => {
@@ -226,13 +261,24 @@ export default function PostScreen() {
         mediaUrls = await uploadImages();
         setUploading(false);
       }
+      const hasPoll = postType === "discussion" && pollQuestion.trim() && pollOptions.filter(o => o.trim()).length >= 2;
       await api.post("/posts", {
         content: content.trim(),
         type: postType,
         gadgetId: selectedGadget?.id,
-        rating:
-          postType === "review" && ratingValue != null ? ratingValue : undefined,
+        rating: postType === "review" && ratingValue != null ? ratingValue : undefined,
         mediaUrls,
+        location: location ?? undefined,
+        taggedUserIds: taggedUsers.map(u => u.id),
+        scheduledAt: scheduledAt ?? undefined,
+        ...(hasPoll ? {
+          poll: {
+            question: pollQuestion.trim(),
+            options: pollOptions.filter(o => o.trim()),
+            durationDays: pollDuration,
+            multipleChoice: pollMultipleChoice,
+          }
+        } : {}),
       });
       Alert.alert("Berhasil!", "Postingan kamu sudah dipublish.", [
         {
@@ -694,6 +740,28 @@ export default function PostScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              {/* Multiple choice toggle */}
+              <View style={styles.multiChoiceRow}>
+                <Text style={styles.multiChoiceLabel}>Jenis Polling:</Text>
+                <View style={styles.multiChoiceBtns}>
+                  <TouchableOpacity
+                    style={[styles.multiChoiceBtn, !pollMultipleChoice && styles.multiChoiceBtnActive]}
+                    onPress={() => setPollMultipleChoice(false)}
+                  >
+                    <Text style={[styles.multiChoiceBtnText, !pollMultipleChoice && styles.multiChoiceBtnTextActive]}>
+                      Satu Pilihan
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.multiChoiceBtn, pollMultipleChoice && styles.multiChoiceBtnActive]}
+                    onPress={() => setPollMultipleChoice(true)}
+                  >
+                    <Text style={[styles.multiChoiceBtnText, pollMultipleChoice && styles.multiChoiceBtnTextActive]}>
+                      Multi Pilihan
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           )}
 
@@ -715,17 +783,148 @@ export default function PostScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionLabel}>TAMBAHAN</Text>
             <View style={styles.extraRow}>
-              {[
-                { icon: MapPin, label: "Lokasi" },
-                { icon: Tag, label: "Tag Teman" },
-                { icon: Clock, label: "Jadwalkan" },
-              ].map(({ icon: Icon, label }) => (
-                <TouchableOpacity key={label} style={styles.extraBtn}>
-                  <Icon size={15} color="#6b7280" />
-                  <Text style={styles.extraBtnText}>{label}</Text>
-                </TouchableOpacity>
-              ))}
+              <TouchableOpacity
+                style={[styles.extraBtn, location ? styles.extraBtnActive : null]}
+                onPress={() => {
+                  setLocationDraft(location ?? "");
+                  setShowLocationInput(v => !v);
+                  setShowUserSearch(false);
+                  setShowScheduleInput(false);
+                }}
+              >
+                <MapPin size={15} color={location ? RED : "#6b7280"} />
+                <Text style={[styles.extraBtnText, location ? { color: RED } : null]}>
+                  {location ? "Lokasi ✓" : "Lokasi"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.extraBtn, taggedUsers.length > 0 ? styles.extraBtnActive : null]}
+                onPress={() => {
+                  setShowUserSearch(v => !v);
+                  setShowLocationInput(false);
+                  setShowScheduleInput(false);
+                }}
+              >
+                <Tag size={15} color={taggedUsers.length > 0 ? RED : "#6b7280"} />
+                <Text style={[styles.extraBtnText, taggedUsers.length > 0 ? { color: RED } : null]}>
+                  {taggedUsers.length > 0 ? `Tag (${taggedUsers.length})` : "Tag Teman"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.extraBtn, scheduledAt ? styles.extraBtnActive : null]}
+                onPress={() => {
+                  setScheduleDraft(scheduledAt ?? "");
+                  setShowScheduleInput(v => !v);
+                  setShowLocationInput(false);
+                  setShowUserSearch(false);
+                }}
+              >
+                <Clock size={15} color={scheduledAt ? RED : "#6b7280"} />
+                <Text style={[styles.extraBtnText, scheduledAt ? { color: RED } : null]}>
+                  {scheduledAt ? "Terjadwal ✓" : "Jadwalkan"}
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {/* Location input */}
+            {showLocationInput && (
+              <View style={styles.extraInputBox}>
+                <TextInput
+                  style={styles.extraInput}
+                  placeholder="Contoh: Jakarta, Indonesia"
+                  placeholderTextColor="#9ca3af"
+                  value={locationDraft}
+                  onChangeText={setLocationDraft}
+                  autoFocus
+                />
+                <View style={styles.extraInputActions}>
+                  <TouchableOpacity
+                    style={styles.extraInputClear}
+                    onPress={() => { setLocation(null); setLocationDraft(""); setShowLocationInput(false); }}
+                  >
+                    <Text style={styles.extraInputClearText}>Hapus</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.extraInputSave}
+                    onPress={() => { setLocation(locationDraft.trim() || null); setShowLocationInput(false); }}
+                  >
+                    <Text style={styles.extraInputSaveText}>Simpan</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Tag Teman search */}
+            {showUserSearch && (
+              <View style={styles.extraInputBox}>
+                {taggedUsers.length > 0 && (
+                  <View style={styles.taggedChips}>
+                    {taggedUsers.map(u => (
+                      <TouchableOpacity
+                        key={u.id}
+                        style={styles.tagChip}
+                        onPress={() => setTaggedUsers(prev => prev.filter(x => x.id !== u.id))}
+                      >
+                        <Text style={styles.tagChipText}>@{u.username} ×</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                <TextInput
+                  style={styles.extraInput}
+                  placeholder="Cari username teman..."
+                  placeholderTextColor="#9ca3af"
+                  value={userSearch}
+                  onChangeText={handleUserSearch}
+                  autoFocus
+                />
+                {userResults.map(u => (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={styles.userResultRow}
+                    onPress={() => addTaggedUser(u)}
+                  >
+                    <Text style={styles.userResultName}>{u.displayName}</Text>
+                    <Text style={styles.userResultUsername}>@{u.username}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Schedule input */}
+            {showScheduleInput && (
+              <View style={styles.extraInputBox}>
+                <Text style={styles.scheduleHint}>Format: YYYY-MM-DDTHH:MM  (contoh: 2026-06-01T10:00)</Text>
+                <TextInput
+                  style={styles.extraInput}
+                  placeholder="2026-06-01T10:00"
+                  placeholderTextColor="#9ca3af"
+                  value={scheduleDraft}
+                  onChangeText={setScheduleDraft}
+                  autoFocus
+                />
+                <View style={styles.extraInputActions}>
+                  <TouchableOpacity
+                    style={styles.extraInputClear}
+                    onPress={() => { setScheduledAt(null); setScheduleDraft(""); setShowScheduleInput(false); }}
+                  >
+                    <Text style={styles.extraInputClearText}>Hapus</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.extraInputSave}
+                    onPress={() => {
+                      const d = new Date(scheduleDraft);
+                      if (isNaN(d.getTime())) { Alert.alert("Format salah", "Gunakan format YYYY-MM-DDTHH:MM"); return; }
+                      if (d <= new Date()) { Alert.alert("Waktu tidak valid", "Jadwal harus di masa depan."); return; }
+                      setScheduledAt(d.toISOString());
+                      setShowScheduleInput(false);
+                    }}
+                  >
+                    <Text style={styles.extraInputSaveText}>Simpan</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
 
           <View style={styles.bottomSpacer} />
@@ -1071,6 +1270,19 @@ const styles = StyleSheet.create({
   },
   saveGadgetBtnText: { fontSize: 13, color: "#fff", fontWeight: "700" },
 
+  // poll multi-choice
+  multiChoiceRow: { marginTop: 12, gap: 8 },
+  multiChoiceLabel: { fontSize: 12, color: "#6b7280", fontWeight: "600" },
+  multiChoiceBtns: { flexDirection: "row", gap: 8 },
+  multiChoiceBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: "#f3f4f6", borderWidth: 1, borderColor: "#e5e7eb",
+    alignItems: "center",
+  },
+  multiChoiceBtnActive: { backgroundColor: RED, borderColor: RED },
+  multiChoiceBtnText: { fontSize: 12, color: "#6b7280", fontWeight: "600" },
+  multiChoiceBtnTextActive: { color: "#fff" },
+
   // extra
   extraRow: { flexDirection: "row", gap: 8 },
   extraBtn: {
@@ -1079,5 +1291,37 @@ const styles = StyleSheet.create({
     paddingVertical: 10, borderRadius: 12,
     backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb",
   },
+  extraBtnActive: { borderColor: RED, backgroundColor: "#fff5f5" },
   extraBtnText: { fontSize: 12, color: "#6b7280", fontWeight: "500" },
+  extraInputBox: { marginTop: 12, gap: 8 },
+  extraInput: {
+    borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10,
+    padding: 10, fontSize: 14, color: "#111",
+  },
+  extraInputActions: { flexDirection: "row", gap: 8 },
+  extraInputClear: {
+    flex: 1, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: "#f3f4f6", alignItems: "center",
+  },
+  extraInputClearText: { fontSize: 13, color: "#6b7280", fontWeight: "600" },
+  extraInputSave: {
+    flex: 1, paddingVertical: 8, borderRadius: 10,
+    backgroundColor: RED, alignItems: "center",
+  },
+  extraInputSaveText: { fontSize: 13, color: "#fff", fontWeight: "700" },
+  taggedChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tagChip: {
+    backgroundColor: "#fef2f2", borderWidth: 1, borderColor: "#fecaca",
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  tagChipText: { fontSize: 12, color: RED, fontWeight: "600" },
+  userResultRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 10, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: "#f3f4f6", borderRadius: 10,
+    backgroundColor: "#fff",
+  },
+  userResultName: { fontSize: 13, fontWeight: "600", color: "#111" },
+  userResultUsername: { fontSize: 12, color: "#9ca3af" },
+  scheduleHint: { fontSize: 11, color: "#9ca3af", marginBottom: 4 },
 });

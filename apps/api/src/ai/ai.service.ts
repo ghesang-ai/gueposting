@@ -146,6 +146,107 @@ Berikan analisis dalam format JSON berikut (semua nilai score adalah angka 0-10)
     return comparison;
   }
 
+  async askAI(question: string) {
+    // Search gadgets by keywords from the question
+    const keywords = question
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 2);
+
+    const gadgets = await this.prisma.gadget.findMany({
+      where: {
+        OR: keywords.flatMap(k => [
+          { name: { contains: k, mode: 'insensitive' as const } },
+          { brand: { contains: k, mode: 'insensitive' as const } },
+          { category: { contains: k, mode: 'insensitive' as const } },
+        ]),
+      },
+      take: 6,
+      orderBy: { avgScore: 'desc' },
+    });
+
+    // Also get recent discussion posts mentioning keywords
+    const posts = await this.prisma.post.findMany({
+      where: {
+        OR: keywords.map(k => ({ content: { contains: k, mode: 'insensitive' as const } })),
+        type: { in: ['review', 'discussion'] },
+      },
+      select: { content: true, type: true, rating: true, user: { select: { username: true } } },
+      take: 10,
+      orderBy: { likeCount: 'desc' },
+    });
+
+    const gadgetContext = gadgets.map(g => ({
+      id: g.id,
+      name: g.name,
+      brand: g.brand,
+      category: g.category,
+      avgScore: g.avgScore,
+      reviewCount: g.reviewCount,
+      imageUrl: g.imageUrl,
+    }));
+
+    const communityInsight = posts
+      .map(p => `[${p.type}${p.rating ? ` ${p.rating}/10` : ''}] @${p.user.username}: ${p.content.slice(0, 120)}`)
+      .join('\n');
+
+    const prompt = `Kamu adalah GUE AI Assistant, asisten gadget komunitas GUEPOSTING Indonesia.
+User bertanya: "${question}"
+
+Data gadget yang relevan dari database GUEPOSTING:
+${JSON.stringify(gadgetContext, null, 2)}
+
+Insight dari komunitas GUEPOSTING:
+${communityInsight || '(belum ada review spesifik)'}
+
+Jawab pertanyaan user secara natural, singkat, dan informatif dalam Bahasa Indonesia.
+Rekomendasikan 1-3 gadget terbaik dari data di atas yang paling cocok.
+
+Output HARUS berupa JSON valid ini saja (tanpa teks lain):
+{
+  "answer": "<jawaban natural 2-3 kalimat, langsung ke intinya>",
+  "recommendations": [
+    { "gadgetId": "<id dari data di atas>", "reason": "<alasan singkat 1 kalimat>" }
+  ]
+}`;
+
+    try {
+      const response = await this.anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}';
+      const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+      const result = JSON.parse(text);
+
+      const recommendedIds: string[] = (result.recommendations ?? []).map((r: any) => r.gadgetId);
+      const recommendedGadgets = gadgets.filter(g => recommendedIds.includes(g.id));
+      // Preserve recommendation order + attach reason
+      const recommendedWithReason = recommendedIds
+        .map(id => {
+          const g = gadgets.find(x => x.id === id);
+          const rec = result.recommendations.find((r: any) => r.gadgetId === id);
+          return g ? { ...g, reason: rec?.reason ?? '' } : null;
+        })
+        .filter(Boolean);
+
+      return {
+        answer: result.answer ?? 'Maaf, saya tidak dapat menemukan rekomendasi yang tepat.',
+        gadgets: recommendedWithReason,
+        allGadgets: gadgetContext,
+      };
+    } catch {
+      return {
+        answer: 'Maaf, GUE AI sedang sibuk. Coba lagi sebentar lagi.',
+        gadgets: gadgets.slice(0, 3).map(g => ({ ...g, reason: '' })),
+        allGadgets: gadgetContext,
+      };
+    }
+  }
+
   async getGadgetSentiment(gadgetId: string) {
     const reviews = await this.prisma.post.findMany({
       where: { gadgetId, type: { in: ['review'] } },

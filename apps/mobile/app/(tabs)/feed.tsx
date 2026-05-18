@@ -135,7 +135,7 @@ export default function FeedScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
       {/* Header */}
-      <AppHeader showIcons />
+      <AppHeader showIcons onBell={() => router.push("/notifications" as any)} />
       <View style={{ backgroundColor: RED, paddingHorizontal: 16, paddingBottom: 12 }}>
         <TouchableOpacity style={styles.searchWrapper} onPress={() => router.push("/search")} activeOpacity={0.8}>
           <Search size={15} color="#9ca3af" style={{ marginRight: 6 }} />
@@ -181,7 +181,12 @@ export default function FeedScreen() {
                 </TouchableOpacity>
               : null
           }
-          renderItem={({ item }) => <PostCard post={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              onDelete={() => setPosts(prev => prev.filter(p => p.id !== item.id))}
+            />
+          )}
         />
       )}
     </View>

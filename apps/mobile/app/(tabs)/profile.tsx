@@ -190,15 +190,20 @@ export default function ProfileScreen() {
       {/* Stats row */}
       <View style={styles.statsRow}>
         {[
-          { label: "Postingan", value: postCount },
-          { label: "Pengikut", value: followerCount },
-          { label: "Mengikuti", value: followingCount },
-          { label: "Poin", value: points },
+          { label: "Postingan", value: postCount, tab: null },
+          { label: "Pengikut", value: followerCount, tab: "followers" },
+          { label: "Mengikuti", value: followingCount, tab: "following" },
+          { label: "Poin", value: points, tab: null },
         ].map((stat) => (
-          <View key={stat.label} style={styles.statBox}>
+          <TouchableOpacity
+            key={stat.label}
+            style={styles.statBox}
+            onPress={stat.tab ? () => router.push(`/follow-list?username=${username}&tab=${stat.tab}` as any) : undefined}
+            disabled={!stat.tab}
+          >
             <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statLabel}>{stat.label}</Text>
-          </View>
+            <Text style={[styles.statLabel, stat.tab ? { color: "#374151" } : null]}>{stat.label}</Text>
+          </TouchableOpacity>
         ))}
       </View>
 
