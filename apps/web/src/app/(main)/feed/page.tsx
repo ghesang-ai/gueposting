@@ -59,16 +59,20 @@ type Tab = "following" | "semua";
 
 export default function FeedPage() {
   const router = useRouter();
-  const { token } = useAuthStore();
+  const { token, _hasHydrated } = useAuthStore();
   const [tab, setTab] = useState<Tab>("semua");
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // Wait for Zustand hydration before checking auth — prevents false logout
+  // on page load when token hasn't been read from localStorage yet.
   useEffect(() => {
+    if (!_hasHydrated) return;
     if (!token) router.push("/login");
-  }, [token, router]);
+  }, [token, router, _hasHydrated]);
 
   const fetchPosts = useCallback(async (p: number, currentTab: Tab) => {
     try {
@@ -83,16 +87,23 @@ export default function FeedPage() {
     } catch {
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!_hasHydrated || !token) return;
     setLoading(true);
     setPage(1);
     setPosts([]);
     fetchPosts(1, tab);
-  }, [token, tab, fetchPosts]);
+  }, [token, tab, fetchPosts, _hasHydrated]);
+
+  const refresh = () => {
+    setRefreshing(true);
+    setPage(1);
+    fetchPosts(1, tab);
+  };
 
   const loadMore = () => {
     const next = page + 1;
@@ -114,6 +125,23 @@ export default function FeedPage() {
           </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={refresh}
+                disabled={refreshing || loading}
+                className="text-white/80 hover:text-white active:scale-90 transition-transform"
+                title="Refresh feed"
+              >
+                <svg
+                  width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  className={refreshing ? "animate-spin" : ""}
+                >
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                  <path d="M21 3v5h-5"/>
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                  <path d="M8 16H3v5"/>
+                </svg>
+              </button>
               <NotificationBell />
             </div>
           </div>

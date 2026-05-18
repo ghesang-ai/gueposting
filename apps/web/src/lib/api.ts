@@ -18,9 +18,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    // Only force-logout if we actually had a token that got rejected.
+    // Prevents false logouts caused by public endpoints returning 401
+    // or race conditions before Zustand finishes hydrating.
     if (err.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      const hadToken = !!localStorage.getItem("token");
+      if (hadToken) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("gueposting-auth");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(err);
   }
