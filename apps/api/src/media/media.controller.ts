@@ -6,7 +6,11 @@ import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '@gueposting/types';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime'];
+const ALLOWED_TYPES = [
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif', 'image/avif', 'image/bmp',
+  'video/mp4', 'video/quicktime',
+];
 const MAX_SIZE = 50 * 1024 * 1024;
 
 @Controller('media')
