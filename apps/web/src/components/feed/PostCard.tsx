@@ -152,9 +152,12 @@ function MediaCarousel({ urls, onIndexChange }: { urls: string[]; onIndexChange?
 }
 
 function PollCard({ poll: initialPoll, postId }: { poll: Poll; postId: string }) {
-  const [poll, setPoll] = useState(initialPoll);
+  const [poll, setPoll] = useState({
+    ...initialPoll,
+    totalVotes: initialPoll.totalVotes ?? initialPoll.options.reduce((s, o) => s + o.voteCount, 0),
+  });
   const [voting, setVoting] = useState(false);
-  const hasVoted = poll.userVote !== null;
+  const hasVoted = poll.userVote != null; // != catches both null and undefined
   const isExpired = new Date(poll.endsAt) < new Date();
 
   const vote = async (optionId: string) => {
