@@ -540,7 +540,7 @@ function NewPostPageInner() {
 
               {/* Jadwalkan */}
               <button
-                onClick={() => { const el = document.getElementById("schedule-input"); el?.showPicker?.(); el?.focus(); }}
+                onClick={() => { const el = document.getElementById("schedule-input") as HTMLInputElement | null; (el as any)?.showPicker?.(); el?.focus(); }}
                 className={cn("flex flex-col items-center gap-1 transition-colors relative", scheduledAt ? "text-[#d42b2b]" : "text-gray-400 hover:text-gray-600")}
               >
                 <span className="text-xl">🕐</span>
