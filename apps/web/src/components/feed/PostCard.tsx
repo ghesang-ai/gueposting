@@ -72,6 +72,95 @@ interface Post {
   } | null;
 }
 
+function MediaCarousel({ urls }: { urls: string[] }) {
+  const [index, setIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const prev = () => setIndex((i) => (i - 1 + urls.length) % urls.length);
+  const next = () => setIndex((i) => (i + 1) % urls.length);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      dx < 0 ? next() : prev();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  const isVideo = (url: string) => /\.(mp4|mov|webm)(\?|$)/i.test(url);
+
+  return (
+    <div className="relative rounded-xl overflow-hidden bg-black select-none">
+      {/* Slides */}
+      <div
+        className="relative aspect-square w-full"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        {urls.map((url, i) => (
+          <div
+            key={i}
+            className="absolute inset-0 transition-opacity duration-300"
+            style={{ opacity: i === index ? 1 : 0, pointerEvents: i === index ? "auto" : "none" }}
+          >
+            {isVideo(url) ? (
+              <video src={url} controls className="w-full h-full object-contain" />
+            ) : (
+              <Image src={url} alt={`media ${i + 1}`} fill className="object-contain" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Prev / Next arrows — only if more than 1 */}
+      {urls.length > 1 && (
+        <>
+          <button
+            onClick={prev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 transition-colors z-10"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 transition-colors z-10"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+
+          {/* Counter badge */}
+          <div className="absolute top-2 right-2 bg-black/50 text-white text-xs font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm z-10">
+            {index + 1}/{urls.length}
+          </div>
+
+          {/* Dot indicators */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            {urls.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setIndex(i)}
+                className={cn(
+                  "rounded-full transition-all duration-200",
+                  i === index ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/50"
+                )}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function PollCard({ poll: initialPoll, postId }: { poll: Poll; postId: string }) {
   const [poll, setPoll] = useState(initialPoll);
   const [voting, setVoting] = useState(false);
@@ -285,15 +374,9 @@ export function PostCard({ post }: { post: Post }) {
       {/* Poll */}
       {post.poll && <PollCard poll={post.poll} postId={post.id} />}
 
-      {/* Media */}
+      {/* Media carousel */}
       {post.mediaUrls.length > 0 && (
-        <div className={cn("grid gap-1 rounded-xl overflow-hidden", post.mediaUrls.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
-          {post.mediaUrls.slice(0, 4).map((url, i) => (
-            <div key={i} className="relative aspect-square bg-muted">
-              <Image src={url} alt="" fill className="object-cover" />
-            </div>
-          ))}
-        </div>
+        <MediaCarousel urls={post.mediaUrls} />
       )}
 
       {/* Action bar */}
