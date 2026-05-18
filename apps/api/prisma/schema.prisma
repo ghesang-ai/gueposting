@@ -110,14 +110,15 @@ model Post {
 }
 
 model Poll {
-  id        String       @id @default(uuid())
-  postId    String       @unique
-  question  String
-  endsAt    DateTime
-  createdAt DateTime     @default(now())
-  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  options   PollOption[]
-  votes     PollVote[]
+  id             String       @id @default(uuid())
+  postId         String       @unique
+  question       String
+  endsAt         DateTime
+  multipleChoice Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  post           Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options        PollOption[]
+  votes          PollVote[]
 }
 
 model PollOption {
@@ -142,7 +143,7 @@ model PollVote {
   poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, pollId])
+  @@unique([userId, optionId])
   @@index([pollId])
 }
 

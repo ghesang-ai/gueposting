@@ -43,6 +43,8 @@ interface Poll {
   endsAt: string;
   totalVotes: number;
   userVote: string | null;
+  userVotes?: string[];
+  multipleChoice?: boolean;
   options: PollOption[];
 }
 
@@ -157,15 +159,48 @@ function PollCard({ poll: initialPoll, postId }: { poll: Poll; postId: string })
     totalVotes: initialPoll.totalVotes ?? initialPoll.options.reduce((s, o) => s + o.voteCount, 0),
   });
   const [voting, setVoting] = useState(false);
-  const hasVoted = poll.userVote != null; // != catches both null and undefined
-  const isExpired = new Date(poll.endsAt) < new Date();
+  // Track all voted option IDs (supports both single and multiple choice)
+  const [userVotes, setUserVotes] = useState<string[]>(() => {
+    if (initialPoll.userVotes && initialPoll.userVotes.length > 0) return initialPoll.userVotes;
+    if (initialPoll.userVote) return [initialPoll.userVote];
+    return [];
+  });
+  // Pending selections for multiple choice (before submit)
+  const [pendingSelections, setPendingSelections] = useState<string[]>([]);
 
-  const vote = async (optionId: string) => {
-    if (hasVoted || isExpired || voting) return;
+  const hasVoted = userVotes.length > 0;
+  const isExpired = new Date(poll.endsAt) < new Date();
+  const isMultiple = poll.multipleChoice ?? false;
+
+  // Single choice: vote immediately on click
+  const voteSingle = async (optionId: string) => {
+    if (isExpired || voting) return;
     setVoting(true);
     try {
-      const res = await api.post(`/posts/${postId}/poll/vote`, { optionId });
+      const res = await api.post(`/posts/${postId}/poll/vote`, { optionIds: [optionId] });
       setPoll(res.data);
+      setUserVotes(res.data.userVotes ?? (res.data.userVote ? [res.data.userVote] : [optionId]));
+    } catch {}
+    finally { setVoting(false); }
+  };
+
+  // Multiple choice: toggle pending selection
+  const togglePending = (optionId: string) => {
+    if (hasVoted || isExpired) return;
+    setPendingSelections((prev) =>
+      prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]
+    );
+  };
+
+  // Multiple choice: submit all pending selections
+  const submitMultiple = async () => {
+    if (pendingSelections.length === 0 || voting) return;
+    setVoting(true);
+    try {
+      const res = await api.post(`/posts/${postId}/poll/vote`, { optionIds: pendingSelections });
+      setPoll(res.data);
+      setUserVotes(res.data.userVotes ?? pendingSelections);
+      setPendingSelections([]);
     } catch {}
     finally { setVoting(false); }
   };
@@ -176,7 +211,7 @@ function PollCard({ poll: initialPoll, postId }: { poll: Poll; postId: string })
     <div className="border border-gray-100 rounded-2xl p-3 space-y-2.5">
       <div className="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
         <span>📊</span>
-        <span>POLLING</span>
+        <span>{isMultiple ? "POLLING MULTI-PILIH" : "POLLING"}</span>
         <span className="mx-1">·</span>
         <span>{isExpired ? "Polling berakhir" : `${daysLeft(poll.endsAt)} tersisa`}</span>
       </div>
@@ -185,13 +220,39 @@ function PollCard({ poll: initialPoll, postId }: { poll: Poll; postId: string })
         {poll.options.map((opt) => {
           const pct = poll.totalVotes > 0 ? Math.round((opt.voteCount / poll.totalVotes) * 100) : 0;
           const isWinner = hasVoted && opt.voteCount === maxVotes && poll.totalVotes > 0;
-          const isMyVote = poll.userVote === opt.id;
+          const isMyVote = userVotes.includes(opt.id);
+          const isPending = pendingSelections.includes(opt.id);
 
+          // Not yet voted and not expired — show voting UI
           if (!hasVoted && !isExpired) {
+            if (isMultiple) {
+              // Checkbox-style for multiple choice
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => togglePending(opt.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left",
+                    isPending
+                      ? "border-[#d42b2b] bg-red-50"
+                      : "border-gray-200 hover:border-[#d42b2b] hover:bg-red-50"
+                  )}
+                >
+                  <span className={cn(
+                    "w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center",
+                    isPending ? "border-[#d42b2b] bg-[#d42b2b]" : "border-gray-300"
+                  )}>
+                    {isPending && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                  </span>
+                  <span className="text-sm text-gray-800">{opt.text}</span>
+                </button>
+              );
+            }
+            // Radio-style for single choice
             return (
               <button
                 key={opt.id}
-                onClick={() => vote(opt.id)}
+                onClick={() => voteSingle(opt.id)}
                 disabled={voting}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-200 hover:border-[#d42b2b] hover:bg-red-50 transition-all text-left disabled:opacity-60"
               >
@@ -201,6 +262,7 @@ function PollCard({ poll: initialPoll, postId }: { poll: Poll; postId: string })
             );
           }
 
+          // Results view (after voting or expired)
           return (
             <div key={opt.id} className={cn("rounded-xl overflow-hidden border", isMyVote ? "border-[#d42b2b]" : "border-gray-100")}>
               <div className="relative px-3 py-2.5">
@@ -220,6 +282,19 @@ function PollCard({ poll: initialPoll, postId }: { poll: Poll; postId: string })
           );
         })}
       </div>
+
+      {/* Multiple choice submit button */}
+      {isMultiple && !hasVoted && !isExpired && (
+        <button
+          onClick={submitMultiple}
+          disabled={pendingSelections.length === 0 || voting}
+          className="w-full py-2.5 rounded-xl bg-[#d42b2b] text-white text-sm font-bold disabled:opacity-40 transition-opacity flex items-center justify-center gap-2"
+        >
+          {voting && <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+          {pendingSelections.length > 0 ? `Pilih (${pendingSelections.length})` : "Pilih"}
+        </button>
+      )}
+
       <p className="text-[10px] text-gray-400">{poll.totalVotes} suara</p>
     </div>
   );

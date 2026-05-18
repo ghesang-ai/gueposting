@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsInt, Min, Max, IsArray, IsUUID, ValidateNested, ArrayMinSize, ArrayMaxSize, IsDateString } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsInt, Min, Max, IsArray, IsUUID, ValidateNested, ArrayMinSize, ArrayMaxSize, IsDateString, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PostType } from '@prisma/client';
 
@@ -16,6 +16,10 @@ export class CreatePollDto {
   @Min(1)
   @Max(14)
   durationDays: number;
+
+  @IsOptional()
+  @IsBoolean()
+  multipleChoice?: boolean;
 }
 
 export class CreatePostDto {

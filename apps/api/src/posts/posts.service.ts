@@ -49,6 +49,7 @@ export class PostsService {
           postId: post.id,
           question: dto.poll.question,
           endsAt: new Date(Date.now() + dto.poll.durationDays * 24 * 60 * 60 * 1000),
+          multipleChoice: dto.poll.multipleChoice ?? false,
           options: {
             create: dto.poll.options
               .filter((t) => t.trim())
@@ -113,7 +114,7 @@ export class PostsService {
       ...p,
       userReaction: likes[0]?.reactionType ?? null,
       isBookmarked: bookmarks.length > 0,
-      poll: poll ? this.formatPoll(poll, poll.votes?.[0]?.optionId ?? null) : null,
+      poll: poll ? this.formatPoll(poll, poll.votes?.map((v: any) => v.optionId) ?? []) : null,
     }));
   }
 
@@ -155,18 +156,25 @@ export class PostsService {
       ...p,
       userReaction: likes[0]?.reactionType ?? null,
       isBookmarked: bookmarks.length > 0,
-      poll: poll ? this.formatPoll(poll, poll.votes?.[0]?.optionId ?? null) : null,
+      poll: poll ? this.formatPoll(poll, poll.votes?.map((v: any) => v.optionId) ?? []) : null,
     }));
   }
 
-  private formatPoll(poll: any, userVoteOptionId: string | null) {
+  private formatPoll(poll: any, userVoteOptionIds: string[] | string | null) {
     const totalVotes = poll.options.reduce((sum: number, o: any) => sum + o.voteCount, 0);
+    const votedIds: string[] = Array.isArray(userVoteOptionIds)
+      ? userVoteOptionIds
+      : userVoteOptionIds != null
+        ? [userVoteOptionIds]
+        : [];
     return {
       id: poll.id,
       question: poll.question,
       endsAt: poll.endsAt,
+      multipleChoice: poll.multipleChoice ?? false,
       totalVotes,
-      userVote: userVoteOptionId,
+      userVote: votedIds[0] ?? null,
+      userVotes: votedIds,
       options: poll.options.map((o: any) => ({
         id: o.id,
         text: o.text,
@@ -233,7 +241,9 @@ export class PostsService {
     }
   }
 
-  async votePoll(userId: string, postId: string, optionId: string) {
+  async votePoll(userId: string, postId: string, optionIds: string[]) {
+    if (!optionIds || optionIds.length === 0) throw new BadRequestException('Pilih setidaknya satu opsi');
+
     const poll = await this.prisma.poll.findUnique({
       where: { postId },
       include: { options: { orderBy: { position: 'asc' } } },
@@ -241,24 +251,58 @@ export class PostsService {
     if (!poll) throw new NotFoundException('Poll tidak ditemukan');
     if (poll.endsAt < new Date()) throw new BadRequestException('Poll sudah berakhir');
 
-    const validOption = poll.options.find((o) => o.id === optionId);
-    if (!validOption) throw new NotFoundException('Opsi tidak valid');
+    const validOptionIds = poll.options.map((o) => o.id);
+    for (const oid of optionIds) {
+      if (!validOptionIds.includes(oid)) throw new NotFoundException(`Opsi ${oid} tidak valid`);
+    }
 
-    const existing = await this.prisma.pollVote.findUnique({
-      where: { userId_pollId: { userId, pollId: poll.id } },
-    });
-    if (existing) throw new BadRequestException('Kamu sudah vote');
+    if (!poll.multipleChoice) {
+      // Single choice: only 1 option allowed, undo previous votes first
+      if (optionIds.length > 1) throw new BadRequestException('Poll ini hanya boleh satu pilihan');
 
-    await this.prisma.$transaction([
-      this.prisma.pollVote.create({ data: { userId, pollId: poll.id, optionId } }),
-      this.prisma.pollOption.update({ where: { id: optionId }, data: { voteCount: { increment: 1 } } }),
-    ]);
+      const optionId = optionIds[0];
+
+      // Find and remove any existing votes by this user on this poll
+      const existingVotes = await this.prisma.pollVote.findMany({
+        where: { userId, pollId: poll.id },
+      });
+
+      if (existingVotes.length > 0) {
+        await this.prisma.$transaction([
+          this.prisma.pollVote.deleteMany({ where: { userId, pollId: poll.id } }),
+          ...existingVotes.map((v) =>
+            this.prisma.pollOption.update({ where: { id: v.optionId }, data: { voteCount: { decrement: 1 } } })
+          ),
+        ]);
+      }
+
+      await this.prisma.$transaction([
+        this.prisma.pollVote.create({ data: { userId, pollId: poll.id, optionId } }),
+        this.prisma.pollOption.update({ where: { id: optionId }, data: { voteCount: { increment: 1 } } }),
+      ]);
+    } else {
+      // Multiple choice: add each new vote, skip duplicates
+      for (const optionId of optionIds) {
+        const alreadyVoted = await this.prisma.pollVote.findUnique({
+          where: { userId_optionId: { userId, optionId } },
+        });
+        if (!alreadyVoted) {
+          await this.prisma.$transaction([
+            this.prisma.pollVote.create({ data: { userId, pollId: poll.id, optionId } }),
+            this.prisma.pollOption.update({ where: { id: optionId }, data: { voteCount: { increment: 1 } } }),
+          ]);
+        }
+      }
+    }
 
     const updated = await this.prisma.poll.findUnique({
       where: { id: poll.id },
-      include: { options: { orderBy: { position: 'asc' } } },
+      include: {
+        options: { orderBy: { position: 'asc' } },
+        votes: { where: { userId }, select: { optionId: true } },
+      },
     });
-    return this.formatPoll(updated, optionId);
+    return this.formatPoll(updated, updated!.votes.map((v) => v.optionId));
   }
 
   async addComment(userId: string, postId: string, content: string) {

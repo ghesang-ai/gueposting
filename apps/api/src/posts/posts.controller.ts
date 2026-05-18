@@ -77,9 +77,9 @@ export class PostsController {
   votePoll(
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
-    @Body('optionId') optionId: string,
+    @Body('optionIds') optionIds: string[],
   ) {
-    return this.postsService.votePoll(user.sub, id, optionId);
+    return this.postsService.votePoll(user.sub, id, optionIds);
   }
 
   @Get('bookmarks/me')

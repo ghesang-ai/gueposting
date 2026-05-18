@@ -68,6 +68,7 @@ function NewPostPageInner() {
   const [pollQuestion, setPollQuestion] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
   const [pollDuration, setPollDuration] = useState(3);
+  const [pollMultipleChoice, setPollMultipleChoice] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("poll") === "1") setShowPoll(true);
@@ -201,6 +202,7 @@ function NewPostPageInner() {
             question: pollQuestion.trim(),
             options: pollOptions.filter((o) => o.trim()),
             durationDays: pollDuration,
+            multipleChoice: pollMultipleChoice,
           },
         }),
       });
@@ -681,6 +683,30 @@ function NewPostPageInner() {
                       {d} Hari
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Tipe Pilihan</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPollMultipleChoice(false)}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-colors",
+                      !pollMultipleChoice ? "bg-[#d42b2b] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    )}
+                  >
+                    <span>🔘</span> Satu Pilihan
+                  </button>
+                  <button
+                    onClick={() => setPollMultipleChoice(true)}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-colors",
+                      pollMultipleChoice ? "bg-[#d42b2b] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    )}
+                  >
+                    <span>☑️</span> Multi Pilihan
+                  </button>
                 </div>
               </div>
             </div>
