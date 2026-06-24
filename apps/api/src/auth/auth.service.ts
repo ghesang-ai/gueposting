@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, InternalServerErrorException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -8,6 +8,8 @@ import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
@@ -41,7 +43,14 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    let user: Awaited<ReturnType<typeof this.prisma.user.findUnique>>;
+    try {
+      user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    } catch (e) {
+      this.logger.error('DB error during login', e);
+      throw new InternalServerErrorException('Server sedang bermasalah. Coba beberapa saat lagi.');
+    }
+
     if (!user || !user.passwordHash) throw new UnauthorizedException('Email atau password salah');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
