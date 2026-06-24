@@ -46,7 +46,10 @@ export default function LoginPage() {
       router.push("/");
     } catch (err: unknown) {
       if (isNetworkError(err)) {
-        if (!isRetry) {
+        const serverMsg = (err as any)?.response?.data?.message;
+        if (serverMsg && serverMsg !== "Internal server error") {
+          setError(serverMsg);
+        } else if (!isRetry) {
           setError("Server sedang memulai... mencoba lagi otomatis.");
           setRetrying(true);
           setTimeout(async () => {
