@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { JwtPayload } from '@gueposting/types';
 
 @Injectable()
@@ -19,6 +20,25 @@ class JwtAuthStrategy extends PassportStrategy(Strategy, 'jwt') {
   validate(payload: JwtPayload) { return payload; }
 }
 
+@Injectable()
+class GoogleAuthStrategy extends PassportStrategy(GoogleStrategy, 'google') {
+  constructor(private authService: AuthService) {
+    super({
+      clientID: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      callbackURL: `${process.env.API_URL || 'http://localhost:3001'}/api/v1/auth/google/callback`,
+      scope: ['email', 'profile'],
+    });
+  }
+
+  async validate(_accessToken: string, _refreshToken: string, profile: any) {
+    const email = profile.emails?.[0]?.value;
+    const displayName = profile.displayName || profile.name?.givenName || 'User';
+    const avatarUrl = profile.photos?.[0]?.value;
+    return this.authService.findOrCreateGoogleUser({ email, displayName, avatarUrl });
+  }
+}
+
 @Module({
   imports: [
     PassportModule,
@@ -28,7 +48,7 @@ class JwtAuthStrategy extends PassportStrategy(Strategy, 'jwt') {
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthStrategy],
+  providers: [AuthService, JwtAuthStrategy, GoogleAuthStrategy],
   exports: [JwtModule, AuthService],
 })
 export class AuthModule {}

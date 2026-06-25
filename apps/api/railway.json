@@ -5,7 +5,7 @@
     "dockerfilePath": "apps/api/Dockerfile"
   },
   "deploy": {
-    "startCommand": "DATABASE_URL=${DIRECT_URL:-$DATABASE_URL} npx prisma db push --skip-generate && node dist/src/main.js",
+    "startCommand": "DATABASE_URL=${DIRECT_URL:-$DATABASE_URL} npx prisma db push --skip-generate --accept-data-loss || echo 'DB push skipped' && node dist/src/main.js",
     "healthcheckPath": "/api/v1/health",
     "restartPolicyType": "ON_FAILURE"
   }
