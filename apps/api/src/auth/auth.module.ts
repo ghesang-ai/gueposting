@@ -24,8 +24,8 @@ class JwtAuthStrategy extends PassportStrategy(Strategy, 'jwt') {
 class GoogleAuthStrategy extends PassportStrategy(GoogleStrategy, 'google') {
   constructor(private authService: AuthService) {
     super({
-      clientID: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      clientID: process.env.GOOGLE_CLIENT_ID || 'disabled',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'disabled',
       callbackURL: `${process.env.API_URL || 'http://localhost:3001'}/api/v1/auth/google/callback`,
       scope: ['email', 'profile'],
     });
