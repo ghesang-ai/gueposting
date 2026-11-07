@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompareRequestDto } from './dto/compare-request.dto';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 @Injectable()
 export class AiService {
-  private anthropic: Anthropic;
+  private openai: OpenAI;
 
   constructor(private prisma: PrismaService) {
-    this.anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
 
   async createComparison(userId: string, dto: CompareRequestDto) {
@@ -65,17 +65,23 @@ export class AiService {
 
       const prompt = this.buildPrompt(gadgetContext, comparison.userBudget, comparison.userUsecase);
 
-      const response = await this.anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
         max_tokens: 2048,
-        system: `Kamu adalah ahli gadget Indonesia yang membantu user membandingkan device secara objektif.
+        messages: [
+          {
+            role: 'system',
+            content: `Kamu adalah ahli gadget Indonesia yang membantu user membandingkan device secara objektif.
 Gunakan data spesifikasi dan review komunitas yang diberikan.
 Selalu jawab dalam Bahasa Indonesia yang natural dan mudah dipahami.
 Output HARUS berupa JSON valid sesuai schema yang diminta. Jangan tambahkan teks apapun di luar JSON.`,
-        messages: [{ role: 'user', content: prompt }],
+          },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
       });
 
-      const raw = response.content[0].type === 'text' ? response.content[0].text : '{}';
+      const raw = response.choices[0].message.content ?? '{}';
       const text = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
       const result = JSON.parse(text);
 
@@ -211,13 +217,14 @@ Output HARUS berupa JSON valid ini saja (tanpa teks lain):
 }`;
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
       });
 
-      const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}';
+      const raw = response.choices[0].message.content?.trim() ?? '{}';
       const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
       const result = JSON.parse(text);
 
